@@ -12,4 +12,10 @@ app.use(theatreRoutes);
 app.use(screenRoutes);
 app.use(movieRoutes);
 
+// Health Check
+app.get("/", (req, res) => {
+  res.send("Server is running!");
+});
+
+
 export default app;
