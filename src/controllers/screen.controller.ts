@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as ScreenService from "../services/Screen.service";
+import * as ScreenService from "../services/screen.service";
 
 export const createScreen = async (req: Request, res: Response) => {
   try {
