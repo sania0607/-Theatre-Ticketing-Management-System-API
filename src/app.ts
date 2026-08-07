@@ -4,6 +4,7 @@ import screenRoutes from "./routes/screen.routes";
 import movieRoutes from "./routes/movie.routes";
 import showRoutes from "./routes/show.routes";
 import seatRoutes from "./routes/seat.routes";
+import showseatRoutes from "./routes/showseat.routes";
 const app = express();
 
 app.use(express.json());
@@ -14,6 +15,7 @@ app.use(screenRoutes);
 app.use(movieRoutes);
 app.use(showRoutes);
 app.use(seatRoutes);
+app.use(showseatRoutes);
 // Health Check
 app.get("/", (req, res) => {
   res.send("Server is running!");
