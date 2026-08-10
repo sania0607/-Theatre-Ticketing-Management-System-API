@@ -6,6 +6,7 @@ import showRoutes from "./routes/show.routes";
 import seatRoutes from "./routes/seat.routes";
 import showseatRoutes from "./routes/showseat.routes";
 import bookingRoutes from "./routes/booking.routes";
+import bookingSeatRoutes from "./routes/bookingseat.routes";
 const app = express();
 
 app.use(express.json());
@@ -18,6 +19,7 @@ app.use(showRoutes);
 app.use(seatRoutes);
 app.use(showseatRoutes);
 app.use(bookingRoutes);
+app.use(bookingSeatRoutes);
 // Health Check
 app.get("/", (req, res) => {
   res.send("Server is running!");
