@@ -5,6 +5,7 @@ import movieRoutes from "./routes/movie.routes";
 import showRoutes from "./routes/show.routes";
 import seatRoutes from "./routes/seat.routes";
 import showseatRoutes from "./routes/showseat.routes";
+import bookingRoutes from "./routes/booking.routes";
 const app = express();
 
 app.use(express.json());
@@ -16,6 +17,7 @@ app.use(movieRoutes);
 app.use(showRoutes);
 app.use(seatRoutes);
 app.use(showseatRoutes);
+app.use(bookingRoutes);
 // Health Check
 app.get("/", (req, res) => {
   res.send("Server is running!");
