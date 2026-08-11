@@ -1,16 +1,17 @@
 import express from "express";
 import * as showController from "../controllers/show.controller";
+import { authenticateToken } from "../middleware/auth.middleware";
 
 const router = express.Router();
 
-router.post("/shows", showController.createShow);
+router.post("/shows", authenticateToken,showController.createShow);
 
-router.get("/shows", showController.getAllShows);
+router.get("/shows", authenticateToken,showController.getAllShows);
 
-router.get("/shows/:id", showController.getShowById);
+router.get("/shows/:id", authenticateToken,showController.getShowById);
 
-router.put("/shows/:id", showController.updateShow);
+router.put("/shows/:id", authenticateToken,showController.updateShow);
 
-router.delete("/shows/:id", showController.deleteShow);
+router.delete("/shows/:id",authenticateToken, showController.deleteShow);
 
 export default router;

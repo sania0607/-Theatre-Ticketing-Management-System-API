@@ -1,16 +1,17 @@
 import express from "express";
 import * as seatController from "../controllers/seat.controller";
+import { authenticateToken } from "../middleware/auth.middleware";
 
 const router = express.Router();
 
-router.post("/seats", seatController.createSeat);
+router.post("/seats", authenticateToken,seatController.createSeat);
 
-router.get("/seats", seatController.getAllSeats);
+router.get("/seats", authenticateToken,seatController.getAllSeats);
 
-router.get("/seats/:id", seatController.getSeatById);
+router.get("/seats/:id",authenticateToken, seatController.getSeatById);
 
-router.put("/seats/:id", seatController.updateSeat);
+router.put("/seats/:id", authenticateToken,seatController.updateSeat);
 
-router.delete("/seats/:id", seatController.deleteSeat);
+router.delete("/seats/:id", authenticateToken,seatController.deleteSeat);
 
 export default router;

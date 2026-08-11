@@ -1,16 +1,17 @@
 import { Router } from "express";
 import * as bookingController from "../controllers/booking.controller";
+import { authenticateToken } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.post("/bookings", bookingController.createBooking);
+router.post("/bookings", authenticateToken,bookingController.createBooking);
 
-router.get("/bookings", bookingController.getAllBookings);
+router.get("/bookings",authenticateToken, bookingController.getAllBookings);
 
-router.get("/bookings/:id", bookingController.getBookingById);
+router.get("/bookings/:id",authenticateToken, bookingController.getBookingById);
 
-router.put("/bookings/:id", bookingController.updateBooking);
+router.put("/bookings/:id",authenticateToken, bookingController.updateBooking);
 
-router.delete("/bookings/:id", bookingController.deleteBooking);
+router.delete("/bookings/:id", authenticateToken,bookingController.deleteBooking);
 
 export default router;

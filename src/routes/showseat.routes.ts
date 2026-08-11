@@ -1,16 +1,17 @@
 import { Router } from "express";
 import * as showSeatController from "../controllers/showseat.controller";
+import { authenticateToken } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.post("/show-seats", showSeatController.createShowSeat);
+router.post("/show-seats",authenticateToken, showSeatController.createShowSeat);
 
-router.get("/show-seats", showSeatController.getAllShowSeats);
+router.get("/show-seats", authenticateToken,showSeatController.getAllShowSeats);
 
-router.get("/show-seats/:id", showSeatController.getShowSeatById);
+router.get("/show-seats/:id",authenticateToken, showSeatController.getShowSeatById);
 
-router.put("/show-seats/:id", showSeatController.updateShowSeat);
+router.put("/show-seats/:id", authenticateToken,showSeatController.updateShowSeat);
 
-router.delete("/show-seats/:id", showSeatController.deleteShowSeat);
+router.delete("/show-seats/:id",authenticateToken, showSeatController.deleteShowSeat);
 
 export default router;
