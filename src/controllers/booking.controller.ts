@@ -89,3 +89,43 @@ export const deleteBooking = async (req: Request, res: Response) => {
     });
   }
 };
+export const createBookingWithSeat = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { show_seat_id, ...booking } = req.body;
+
+    const newBooking =
+      await bookingService.createBookingWithSeat(
+        booking,
+        Number(show_seat_id)
+      );
+
+    res.status(201).json(newBooking);
+  } catch (error: any) {
+    console.error("CREATE BOOKING WITH SEAT ERROR:", error);
+
+    if (error.message === "Show seat not found") {
+      return res.status(404).json({
+        message: "Show seat not found",
+      });
+    }
+
+    if (error.message === "Seat is already booked") {
+      return res.status(409).json({
+        message: "Seat is already booked",
+      });
+    }
+
+    if (error.message === "Seat is currently locked") {
+      return res.status(409).json({
+        message: "Seat is currently locked",
+      });
+    }
+
+    res.status(500).json({
+      message: "Failed to create booking",
+    });
+  }
+};

@@ -14,4 +14,5 @@ router.put("/bookings/:id",authenticateToken, bookingController.updateBooking);
 
 router.delete("/bookings/:id", authenticateToken,bookingController.deleteBooking);
 
+router.post("/bookings/with-seat",authenticateToken,bookingController.createBookingWithSeat);
 export default router;

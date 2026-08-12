@@ -14,4 +14,6 @@ router.put("/show-seats/:id", authenticateToken,showSeatController.updateShowSea
 
 router.delete("/show-seats/:id",authenticateToken, showSeatController.deleteShowSeat);
 
+router.post("/show-seats/:id/lock",authenticateToken, showSeatController.lockShowSeat
+);
 export default router;

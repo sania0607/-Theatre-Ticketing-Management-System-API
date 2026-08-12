@@ -118,3 +118,42 @@ export const deleteShowSeat = async (
     });
   }
 };
+export const lockShowSeat = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const showSeat = await showSeatService.lockShowSeat(
+      Number(req.params.id)
+    );
+
+    res.json({
+      message: "Show seat locked successfully",
+      showSeat,
+    });
+  } catch (error: any) {
+    console.error("LOCK SHOW SEAT ERROR:", error);
+
+    if (error.message === "Show seat not found") {
+      return res.status(404).json({
+        message: "Show seat not found",
+      });
+    }
+
+    if (error.message === "Seat is already booked") {
+      return res.status(409).json({
+        message: "Seat is already booked",
+      });
+    }
+
+    if (error.message === "Seat is already locked") {
+      return res.status(409).json({
+        message: "Seat is already locked",
+      });
+    }
+
+    res.status(500).json({
+      message: "Failed to lock show seat",
+    });
+  }
+};

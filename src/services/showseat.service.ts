@@ -77,3 +77,59 @@ export const deleteShowSeat = async (id: number) => {
 
   return result.rows[0];
 };
+export const lockShowSeat = async (id: number) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Lock the row so two requests cannot lock the same seat simultaneously
+    const result = await client.query(
+      `SELECT * FROM show_seat
+       WHERE id = $1
+       FOR UPDATE`,
+      [id]
+    );
+
+    const showSeat = result.rows[0];
+
+    if (!showSeat) {
+      throw new Error("Show seat not found");
+    }
+
+    // If already booked, it cannot be locked
+    if (showSeat.status === "booked") {
+      throw new Error("Seat is already booked");
+    }
+
+    // If currently locked, check whether the lock has expired
+    if (
+      showSeat.status === "locked" &&
+      showSeat.locked_until &&
+      new Date(showSeat.locked_until) > new Date()
+    ) {
+      throw new Error("Seat is already locked");
+    }
+
+    // Lock for 10 minutes
+    const lockedUntil = new Date(Date.now() + 10 * 60 * 1000);
+
+    const updated = await client.query(
+      `UPDATE show_seat
+       SET status = 'locked',
+           locked_until = $1
+       WHERE id = $2
+       RETURNING *`,
+      [lockedUntil, id]
+    );
+
+    await client.query("COMMIT");
+
+    return updated.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
