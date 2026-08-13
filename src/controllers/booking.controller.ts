@@ -129,3 +129,52 @@ export const createBookingWithSeat = async (
     });
   }
 };
+export const confirmBooking = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { bookingReference } = req.params;
+
+    const result =
+      await bookingService.confirmBooking(
+        bookingReference
+      );
+
+    res.json({
+      message: "Booking confirmed successfully",
+      booking: result.booking,
+      showSeat: result.showSeat,
+    });
+  } catch (error: any) {
+    console.error("CONFIRM BOOKING ERROR:", error);
+
+    if (error.message === "Booking not found") {
+      return res.status(404).json({
+        message: "Booking not found",
+      });
+    }
+
+    if (error.message === "Booking is not pending") {
+      return res.status(409).json({
+        message: "Booking is not pending",
+      });
+    }
+
+    if (error.message === "Show seat not found") {
+      return res.status(404).json({
+        message: "Show seat not found",
+      });
+    }
+
+    if (error.message === "Seat lock has expired") {
+      return res.status(409).json({
+        message: "Seat lock has expired",
+      });
+    }
+
+    res.status(500).json({
+      message: "Failed to confirm booking",
+    });
+  }
+};

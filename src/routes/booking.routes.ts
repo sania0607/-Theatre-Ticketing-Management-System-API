@@ -8,6 +8,8 @@ router.post("/bookings", authenticateToken,bookingController.createBooking);
 
 router.get("/bookings",authenticateToken, bookingController.getAllBookings);
 
+router.post("/bookings/:bookingReference/confirm",authenticateToken,bookingController.confirmBooking);
+
 router.get("/bookings/:id",authenticateToken, bookingController.getBookingById);
 
 router.put("/bookings/:id",authenticateToken, bookingController.updateBooking);

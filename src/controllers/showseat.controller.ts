@@ -123,14 +123,31 @@ export const lockShowSeat = async (
   res: Response
 ) => {
   try {
-    const showSeat = await showSeatService.lockShowSeat(
-      Number(req.params.id)
-    );
+    const {
+  aggregatorName,
+  totalAmount
+} = req.body;
 
-    res.json({
-      message: "Show seat locked successfully",
-      showSeat,
-    });
+if (!aggregatorName || totalAmount === undefined) {
+  return res.status(400).json({
+    message: "aggregatorName and totalAmount are required"
+  });
+}
+
+const result = await showSeatService.lockShowSeat(
+  Number(req.params.id),
+  aggregatorName,
+  Number(totalAmount)
+);
+
+res.json({
+  message: "Show seat locked successfully",
+  bookingReference: result.booking.booking_reference,
+  bookingStatus: result.booking.booking_status,
+  lockedUntil: result.showSeat.locked_until,
+  showSeat: result.showSeat,
+});
+
   } catch (error: any) {
     console.error("LOCK SHOW SEAT ERROR:", error);
 

@@ -170,3 +170,89 @@ export const createBookingWithSeat = async (
     client.release();
   }
 };
+export const confirmBooking = async (
+  bookingReference: string
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // 1. Find and lock the booking
+    const bookingResult = await client.query(
+      `SELECT *
+       FROM booking
+       WHERE booking_reference = $1
+       FOR UPDATE`,
+      [bookingReference]
+    );
+
+    const booking = bookingResult.rows[0];
+
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // 2. Booking must be PENDING
+    if (booking.booking_status !== "PENDING") {
+      throw new Error("Booking is not pending");
+    }
+
+    // 3. Find the show seat connected to this booking
+    const seatResult = await client.query(
+      `SELECT ss.*
+       FROM show_seat ss
+       JOIN booking_seat bs
+         ON bs.show_seat_id = ss.id
+       WHERE bs.booking_id = $1
+       FOR UPDATE`,
+      [booking.id]
+    );
+
+    const showSeat = seatResult.rows[0];
+
+    if (!showSeat) {
+      throw new Error("Show seat not found");
+    }
+
+    // 4. Check whether the lock has expired
+    if (
+      showSeat.status !== "locked" ||
+      !showSeat.locked_until ||
+      new Date(showSeat.locked_until) <= new Date()
+    ) {
+      throw new Error("Seat lock has expired");
+    }
+
+    // 5. Confirm the booking
+    const updatedBookingResult = await client.query(
+      `UPDATE booking
+       SET booking_status = 'CONFIRMED'
+       WHERE id = $1
+       RETURNING *`,
+      [booking.id]
+    );
+
+    // 6. Mark the seat as booked
+    const updatedSeatResult = await client.query(
+      `UPDATE show_seat
+       SET status = 'booked',
+           locked_until = NULL
+       WHERE id = $1
+       RETURNING *`,
+      [showSeat.id]
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      booking: updatedBookingResult.rows[0],
+      showSeat: updatedSeatResult.rows[0],
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};

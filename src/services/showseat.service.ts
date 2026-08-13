@@ -1,4 +1,5 @@
 import { pool } from "../config/database";
+import crypto from "crypto";
 
 export const createShowSeat = async (showSeat: any) => {
   const {
@@ -77,15 +78,17 @@ export const deleteShowSeat = async (id: number) => {
 
   return result.rows[0];
 };
-export const lockShowSeat = async (id: number) => {
+export const lockShowSeat = async (id: number,aggregatorName: string,
+  totalAmount: number) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // Lock the row so two requests cannot lock the same seat simultaneously
+    // 1. Lock the show_seat row
     const result = await client.query(
-      `SELECT * FROM show_seat
+      `SELECT *
+       FROM show_seat
        WHERE id = $1
        FOR UPDATE`,
       [id]
@@ -97,12 +100,12 @@ export const lockShowSeat = async (id: number) => {
       throw new Error("Show seat not found");
     }
 
-    // If already booked, it cannot be locked
+    // 2. Cannot lock a booked seat
     if (showSeat.status === "booked") {
       throw new Error("Seat is already booked");
     }
 
-    // If currently locked, check whether the lock has expired
+    // 3. Check existing lock
     if (
       showSeat.status === "locked" &&
       showSeat.locked_until &&
@@ -111,9 +114,41 @@ export const lockShowSeat = async (id: number) => {
       throw new Error("Seat is already locked");
     }
 
-    // Lock for 10 minutes
-    const lockedUntil = new Date(Date.now() + 10 * 60 * 1000);
+    // 4. Generate booking reference
+    const bookingReference = `BK-${crypto.randomUUID()}`;
 
+    // 5. Lock for 10 minutes
+    const lockedUntil = new Date(
+      Date.now() + 10 * 60 * 1000
+    );
+
+    // 6. Create PENDING booking
+    const bookingResult = await client.query(
+      `INSERT INTO booking
+       (show_id, aggregator_name, booking_reference,
+        booking_status, total_amount)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [
+        showSeat.show_id,
+        aggregatorName,
+        bookingReference,
+        "PENDING",
+        totalAmount
+      ]
+    );
+
+    const booking = bookingResult.rows[0];
+
+    // 7. Connect booking with show seat
+    await client.query(
+      `INSERT INTO booking_seat
+       (booking_id, show_seat_id)
+       VALUES ($1, $2)`,
+      [booking.id, id]
+    );
+
+    // 8. Mark seat as locked
     const updated = await client.query(
       `UPDATE show_seat
        SET status = 'locked',
@@ -125,7 +160,11 @@ export const lockShowSeat = async (id: number) => {
 
     await client.query("COMMIT");
 
-    return updated.rows[0];
+    return {
+      showSeat: updated.rows[0],
+      booking: booking
+    };
+
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
