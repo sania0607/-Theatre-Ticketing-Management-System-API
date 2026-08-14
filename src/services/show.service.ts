@@ -1,4 +1,6 @@
-import { pool } from "../config/database";
+import Show from "../models/show.model";
+import Movie from "../models/movie.model";
+import Screen from "../models/screen.model";
 
 export const createShow = async (show: any) => {
   const {
@@ -10,42 +12,47 @@ export const createShow = async (show: any) => {
     ticket_price,
   } = show;
 
-  const result = await pool.query(
-    `INSERT INTO "show"
-    (movie_id, screen_id, show_date, start_time, end_time, ticket_price)
-    VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING *`,
-    [
-      movie_id,
-      screen_id,
-      show_date,
-      start_time,
-      end_time,
-      ticket_price,
-    ]
-  );
+  const newShow = await Show.create({
+    movie_id,
+    screen_id,
+    show_date,
+    start_time,
+    end_time,
+    ticket_price,
+  });
 
-  return result.rows[0];
+  return newShow;
 };
 
 export const getAllShows = async () => {
-  const result = await pool.query(
-    `SELECT * FROM "show" ORDER BY id`
-  );
+  const shows = await Show.findAll({
+    order: [["id", "ASC"]],
+  });
 
-  return result.rows;
+  return shows;
 };
 
 export const getShowById = async (id: number) => {
-  const result = await pool.query(
-    `SELECT * FROM "show" WHERE id = $1`,
-    [id]
-  );
+  const show = await Show.findByPk(id, {
+    include: [
+      {
+        model: Movie,
+        as: "movie",
+      },
+      {
+        model: Screen,
+        as: "screen",
+      },
+    ],
+  });
 
-  return result.rows[0];
+  return show;
 };
 
-export const updateShow = async (id: number, show: any) => {
+export const updateShow = async (
+  id: number,
+  show: any
+) => {
   const {
     movie_id,
     screen_id,
@@ -55,37 +62,32 @@ export const updateShow = async (id: number, show: any) => {
     ticket_price,
   } = show;
 
-  const result = await pool.query(
-    `UPDATE "show"
-     SET movie_id = $1,
-         screen_id = $2,
-         show_date = $3,
-         start_time = $4,
-         end_time = $5,
-         ticket_price = $6
-     WHERE id = $7
-     RETURNING *`,
-    [
-      movie_id,
-      screen_id,
-      show_date,
-      start_time,
-      end_time,
-      ticket_price,
-      id,
-    ]
-  );
+  const existingShow = await Show.findByPk(id);
 
-  return result.rows[0];
+  if (!existingShow) {
+    return null;
+  }
+
+  await existingShow.update({
+    movie_id,
+    screen_id,
+    show_date,
+    start_time,
+    end_time,
+    ticket_price,
+  });
+
+  return existingShow;
 };
 
 export const deleteShow = async (id: number) => {
-  const result = await pool.query(
-    `DELETE FROM "show"
-     WHERE id = $1
-     RETURNING *`,
-    [id]
-  );
+  const show = await Show.findByPk(id);
 
-  return result.rows[0];
+  if (!show) {
+    return null;
+  }
+
+  await show.destroy();
+
+  return show;
 };

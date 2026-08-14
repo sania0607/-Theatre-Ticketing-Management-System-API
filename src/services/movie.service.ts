@@ -1,59 +1,76 @@
-import { pool } from "../config/database";
+import Movie from "../models/movie.model";
 
 export const createMovie = async (movie: any) => {
-  const { title, genre, language, duration, release_date } = movie;
+  const {
+    title,
+    genre,
+    language,
+    duration,
+    release_date,
+  } = movie;
 
-  const result = await pool.query(
-    `INSERT INTO movie
-    (title, genre, language, duration, release_date)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING *`,
-    [title, genre, language, duration, release_date]
-  );
+  const newMovie = await Movie.create({
+    title,
+    genre,
+    language,
+    duration,
+    release_date,
+  });
 
-  return result.rows[0];
+  return newMovie;
 };
 
 export const getAllMovies = async () => {
-  const result = await pool.query(
-    "SELECT * FROM movie ORDER BY id"
-  );
+  const movies = await Movie.findAll({
+    order: [["id", "ASC"]],
+  });
 
-  return result.rows;
+  return movies;
 };
 
 export const getMovieById = async (id: number) => {
-  const result = await pool.query(
-    "SELECT * FROM movie WHERE id = $1",
-    [id]
-  );
+  const movie = await Movie.findByPk(id);
 
-  return result.rows[0];
+  return movie;
 };
 
-export const updateMovie = async (id: number, movie: any) => {
-  const { title, genre, language, duration, release_date } = movie;
+export const updateMovie = async (
+  id: number,
+  movie: any
+) => {
+  const {
+    title,
+    genre,
+    language,
+    duration,
+    release_date,
+  } = movie;
 
-  const result = await pool.query(
-    `UPDATE movie
-     SET title = $1,
-         genre = $2,
-         language = $3,
-         duration = $4,
-         release_date = $5
-     WHERE id = $6
-     RETURNING *`,
-    [title, genre, language, duration, release_date, id]
-  );
+  const existingMovie = await Movie.findByPk(id);
 
-  return result.rows[0];
+  if (!existingMovie) {
+    return null;
+  }
+
+  await existingMovie.update({
+    title,
+    genre,
+    language,
+    duration,
+    release_date,
+  });
+
+  return existingMovie;
 };
 
 export const deleteMovie = async (id: number) => {
-  const result = await pool.query(
-    "DELETE FROM movie WHERE id = $1 RETURNING *",
-    [id]
-  );
+  const movie = await Movie.findByPk(id);
 
-  return result.rows[0];
+  if (!movie) {
+    return null;
+  }
+
+  await movie.destroy();
+
+  return movie;
 };

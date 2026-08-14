@@ -1,56 +1,68 @@
-import { pool } from "../config/database";
+import Screen from "../models/screen.model";
 
 export const createScreen = async (screen: any) => {
-  const { theatre_id, name, capacity } = screen;
+  const {
+    theatre_id,
+    name,
+    capacity,
+  } = screen;
 
-  const result = await pool.query(
-    `INSERT INTO screen (theatre_id, name, capacity)
-     VALUES ($1, $2, $3)
-     RETURNING *`,
-    [theatre_id, name, capacity]
-  );
+  const newScreen = await Screen.create({
+    theatre_id,
+    name,
+    capacity,
+  });
 
-  return result.rows[0];
+  return newScreen;
 };
 
 export const getAllScreens = async () => {
-  const result = await pool.query(
-    "SELECT * FROM screen ORDER BY id"
-  );
+  const screens = await Screen.findAll({
+    order: [["id", "ASC"]],
+  });
 
-  return result.rows;
+  return screens;
 };
 
 export const getScreenById = async (id: number) => {
-  const result = await pool.query(
-    "SELECT * FROM screen WHERE id=$1",
-    [id]
-  );
+  const screen = await Screen.findByPk(id);
 
-  return result.rows[0];
+  return screen;
 };
 
-export const updateScreen = async (id: number, screen: any) => {
-  const { theatre_id, name, capacity } = screen;
+export const updateScreen = async (
+  id: number,
+  screen: any
+) => {
+  const {
+    theatre_id,
+    name,
+    capacity,
+  } = screen;
 
-  const result = await pool.query(
-    `UPDATE screen
-     SET theatre_id=$1,
-         name=$2,
-         capacity=$3
-     WHERE id=$4
-     RETURNING *`,
-    [theatre_id, name, capacity, id]
-  );
+  const existingScreen = await Screen.findByPk(id);
 
-  return result.rows[0];
+  if (!existingScreen) {
+    return null;
+  }
+
+  await existingScreen.update({
+    theatre_id,
+    name,
+    capacity,
+  });
+
+  return existingScreen;
 };
 
 export const deleteScreen = async (id: number) => {
-  const result = await pool.query(
-    "DELETE FROM screen WHERE id=$1 RETURNING *",
-    [id]
-  );
+  const screen = await Screen.findByPk(id);
 
-  return result.rows[0];
+  if (!screen) {
+    return null;
+  }
+
+  await screen.destroy();
+
+  return screen;
 };

@@ -1,5 +1,6 @@
 import app from "./app";
 import { pool } from "./config/database";
+import "./models/associations";
 
 const PORT = process.env.PORT || 3000;
 
