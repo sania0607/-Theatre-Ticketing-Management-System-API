@@ -9,11 +9,13 @@ export const authenticateClient = async (
 ) => {
   try {
     const clientCode = req.headers["x-client-code"] as string;
+    const timestamp = req.headers["x-timestamp"] as string;
     const signature = req.headers["x-signature"] as string;
 
-    if (!clientCode || !signature) {
+    if (!clientCode || !timestamp || !signature) {
       return res.status(401).json({
-        message: "Client code and signature are required",
+        message:
+          "Client code, timestamp and signature are required",
       });
     }
 
@@ -31,10 +33,32 @@ export const authenticateClient = async (
 
     const client = result.rows[0];
 
-    // The data must be EXACTLY the same data
-    // that the client signed.
-    const data = JSON.stringify(req.body);
+    // Check timestamp
+    const requestTime = Number(timestamp);
+    const currentTime = Date.now();
 
+    if (
+      !Number.isFinite(requestTime) ||
+      Math.abs(currentTime - requestTime) > 5 * 60 * 1000
+    ) {
+      return res.status(401).json({
+        message: "Request timestamp expired",
+      });
+    }
+
+    // Data must be EXACTLY the same data
+    // that the client signed.
+    const body = JSON.stringify(req.body || {});
+
+    const data = [
+      clientCode,
+      timestamp,
+      req.method,
+      req.originalUrl,
+      body,
+    ].join("|");
+
+    // Verify RSA signature
     const verifier = crypto.createVerify("RSA-SHA256");
 
     verifier.update(data);
