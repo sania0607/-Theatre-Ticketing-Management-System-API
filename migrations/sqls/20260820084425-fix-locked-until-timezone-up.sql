@@ -1,0 +1,4 @@
+ALTER TABLE show_seat
+ALTER COLUMN locked_until
+TYPE TIMESTAMP WITH TIME ZONE
+USING locked_until AT TIME ZONE 'UTC';
