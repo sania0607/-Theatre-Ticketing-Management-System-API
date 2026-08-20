@@ -1,59 +1,75 @@
-import { pool } from "../config/database";
+import BookingSeat from "../models/bookingseat.model";
 
-export const createBookingSeat = async (bookingSeat: any) => {
-  const { booking_id, show_seat_id } = bookingSeat;
+export const createBookingSeat = async (
+  bookingSeat: any
+) => {
+  const {
+    booking_id,
+    show_seat_id,
+  } = bookingSeat;
 
-  const result = await pool.query(
-    `INSERT INTO booking_seat
-    (booking_id, show_seat_id)
-    VALUES ($1, $2)
-    RETURNING *`,
-    [booking_id, show_seat_id]
-  );
+  const newBookingSeat =
+    await BookingSeat.create({
+      booking_id,
+      show_seat_id,
+    });
 
-  return result.rows[0];
+  return newBookingSeat;
 };
 
 export const getAllBookingSeats = async () => {
-  const result = await pool.query(
-    "SELECT * FROM booking_seat ORDER BY id"
-  );
+  const bookingSeats =
+    await BookingSeat.findAll({
+      order: [["id", "ASC"]],
+    });
 
-  return result.rows;
+  return bookingSeats;
 };
 
-export const getBookingSeatById = async (id: number) => {
-  const result = await pool.query(
-    "SELECT * FROM booking_seat WHERE id = $1",
-    [id]
-  );
+export const getBookingSeatById = async (
+  id: number
+) => {
+  const bookingSeat =
+    await BookingSeat.findByPk(id);
 
-  return result.rows[0];
+  return bookingSeat;
 };
 
 export const updateBookingSeat = async (
   id: number,
   bookingSeat: any
 ) => {
-  const { booking_id, show_seat_id } = bookingSeat;
+  const {
+    booking_id,
+    show_seat_id,
+  } = bookingSeat;
 
-  const result = await pool.query(
-    `UPDATE booking_seat
-     SET booking_id = $1,
-         show_seat_id = $2
-     WHERE id = $3
-     RETURNING *`,
-    [booking_id, show_seat_id, id]
-  );
+  const existingBookingSeat =
+    await BookingSeat.findByPk(id);
 
-  return result.rows[0];
+  if (!existingBookingSeat) {
+    return null;
+  }
+
+  await existingBookingSeat.update({
+    booking_id,
+    show_seat_id,
+  });
+
+  return existingBookingSeat;
 };
 
-export const deleteBookingSeat = async (id: number) => {
-  const result = await pool.query(
-    "DELETE FROM booking_seat WHERE id = $1 RETURNING *",
-    [id]
-  );
+export const deleteBookingSeat = async (
+  id: number
+) => {
+  const bookingSeat =
+    await BookingSeat.findByPk(id);
 
-  return result.rows[0];
+  if (!bookingSeat) {
+    return null;
+  }
+
+  await bookingSeat.destroy();
+
+  return bookingSeat;
 };

@@ -1,8 +1,10 @@
-import { pool } from "../config/database";
+import { sequelize } from "../config/sequelize";
+import { Op } from "sequelize";
 import Booking from "../models/booking.model";
+import BookingSeat from "../models/bookingseat.model";
+import ShowSeat from "../models/showseat.model";
 
 // CREATE BOOKING
-
 
 export const createBooking = async (booking: any) => {
   const {
@@ -26,9 +28,7 @@ export const createBooking = async (booking: any) => {
   return newBooking;
 };
 
-
 // GET ALL BOOKINGS
-
 
 export const getAllBookings = async () => {
   const bookings = await Booking.findAll({
@@ -46,9 +46,7 @@ export const getBookingById = async (id: number) => {
   return booking;
 };
 
-
 // UPDATE BOOKING
-
 
 export const updateBooking = async (
   id: number,
@@ -72,9 +70,7 @@ export const updateBooking = async (
   return existingBooking;
 };
 
-
 // DELETE BOOKING
-
 
 export const deleteBooking = async (id: number) => {
   const booking = await Booking.findByPk(id);
@@ -88,178 +84,218 @@ export const deleteBooking = async (id: number) => {
   return booking;
 };
 
+
 // CREATE BOOKING WITH SEAT
+// Creates a PENDING booking for an already LOCKED seat.
+// The seat remains LOCKED until confirmation.
 
 export const createBookingWithSeat = async (
   booking: any,
   showSeatId: number
 ) => {
-  const client = await pool.connect();
+  return await sequelize.transaction(async (transaction) => {
+    // 1. Find and lock the ShowSeat row
 
-  try {
-    await client.query("BEGIN");
-
-    // 1. Check and lock the show seat
-    const seatResult = await client.query(
-      `SELECT *
-       FROM show_seat
-       WHERE id = $1
-       FOR UPDATE`,
-      [showSeatId]
-    );
-
-    const showSeat = seatResult.rows[0];
+    const showSeat = await ShowSeat.findByPk(showSeatId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
 
     if (!showSeat) {
       throw new Error("Show seat not found");
     }
 
-    // 2. Cannot book an already booked seat
-    if (showSeat.status === "booked") {
-      throw new Error("Seat is already booked");
+    // 2. Seat must be LOCKED
+
+    if (showSeat.status !== "LOCKED") {
+      if (showSeat.status === "BOOKED") {
+        throw new Error("Seat is already booked");
+      }
+
+      throw new Error("Seat is not locked");
     }
 
-    // 3. Cannot book an actively locked seat
+    // 3. Check whether the lock has expired
+
     if (
-      showSeat.status === "locked" &&
-      showSeat.locked_until &&
-      new Date(showSeat.locked_until) > new Date()
-    ) {
-      throw new Error("Seat is currently locked");
-    }
-
-    // 4. Create booking
-    const bookingResult = await client.query(
-      `INSERT INTO booking
-       (show_id, aggregator_name, booking_reference,
-        booking_status, total_amount, booked_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [
-        booking.show_id,
-        booking.aggregator_name,
-        booking.booking_reference,
-        booking.booking_status,
-        booking.total_amount,
-        booking.booked_at || new Date(),
-      ]
-    );
-
-    const newBooking = bookingResult.rows[0];
-
-    // 5. Connect booking with show seat
-    await client.query(
-      `INSERT INTO booking_seat
-       (booking_id, show_seat_id)
-       VALUES ($1, $2)`,
-      [newBooking.id, showSeatId]
-    );
-
-    // 6. Mark seat as booked
-    await client.query(
-      `UPDATE show_seat
-       SET status = 'booked',
-           locked_until = NULL
-       WHERE id = $1`,
-      [showSeatId]
-    );
-
-    await client.query("COMMIT");
-
-    return newBooking;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
-};
-
-// CONFIRM BOOKING
-
-export const confirmBooking = async (
-  bookingReference: string
-) => {
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    // 1. Find and lock booking
-    const bookingResult = await client.query(
-      `SELECT *
-       FROM booking
-       WHERE booking_reference = $1
-       FOR UPDATE`,
-      [bookingReference]
-    );
-
-    const booking = bookingResult.rows[0];
-
-    if (!booking) {
-      throw new Error("Booking not found");
-    }
-
-    // 2. Booking must be pending
-    if (booking.booking_status !== "PENDING") {
-      throw new Error("Booking is not pending");
-    }
-
-    // 3. Find and lock associated show seat
-    const seatResult = await client.query(
-      `SELECT ss.*
-       FROM show_seat ss
-       JOIN booking_seat bs
-         ON bs.show_seat_id = ss.id
-       WHERE bs.booking_id = $1
-       FOR UPDATE`,
-      [booking.id]
-    );
-
-    const showSeat = seatResult.rows[0];
-
-    if (!showSeat) {
-      throw new Error("Show seat not found");
-    }
-
-    // 4. Check lock expiry
-    if (
-      showSeat.status !== "locked" ||
       !showSeat.locked_until ||
       new Date(showSeat.locked_until) <= new Date()
     ) {
       throw new Error("Seat lock has expired");
     }
 
-    // 5. Confirm booking
-    const updatedBookingResult = await client.query(
-      `UPDATE booking
-       SET booking_status = 'CONFIRMED'
-       WHERE id = $1
-       RETURNING *`,
-      [booking.id]
+    // 4. Create PENDING booking
+
+    const newBooking = await Booking.create(
+      {
+        show_id: booking.show_id,
+        aggregator_name: booking.aggregator_name,
+        booking_reference: booking.booking_reference,
+        booking_status: "PENDING",
+        total_amount: booking.total_amount,
+        booked_at: booking.booked_at || new Date(),
+      },
+      {
+        transaction,
+      }
     );
 
-    // 6. Mark seat as booked
-    const updatedSeatResult = await client.query(
-      `UPDATE show_seat
-       SET status = 'booked',
-           locked_until = NULL
-       WHERE id = $1
-       RETURNING *`,
-      [showSeat.id]
+    // 5. Connect booking with ShowSeat
+
+    await BookingSeat.create(
+      {
+        booking_id: newBooking.id,
+        show_seat_id: showSeatId,
+      },
+      {
+        transaction,
+      }
     );
 
-    await client.query("COMMIT");
+    // Seat stays LOCKED.
+    // It becomes BOOKED only after confirmation.
+
+    return newBooking;
+  });
+};
+
+
+// CONFIRM BOOKING
+// PENDING booking → CONFIRMED
+// LOCKED seats → BOOKED
+
+export const confirmBooking = async (
+  bookingReference: string
+) => {
+  return await sequelize.transaction(async (transaction) => {
+    // 1. Find and lock the booking
+
+    const booking = await Booking.findOne({
+      where: {
+        booking_reference: bookingReference,
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // 2. Booking must be PENDING
+
+    if (booking.booking_status !== "PENDING") {
+      throw new Error("Booking is not pending");
+    }
+
+    // 3. Find seats connected to this booking
+
+    const bookingSeats = await BookingSeat.findAll({
+      where: {
+        booking_id: booking.id,
+      },
+      transaction,
+    });
+
+    if (bookingSeats.length === 0) {
+      throw new Error("Show seat not found");
+    }
+
+    // 4. Extract ShowSeat IDs
+
+    const showSeatIds = bookingSeats.map(
+      (bookingSeat) => bookingSeat.show_seat_id
+    );
+
+    // 5. Find and lock all ShowSeat rows
+
+    const showSeats = await ShowSeat.findAll({
+      where: {
+        id: {
+          [Op.in]: showSeatIds,
+        },
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (showSeats.length !== bookingSeats.length) {
+      throw new Error("Show seat not found");
+    }
+
+    // 6. Validate every seat
+
+    for (const showSeat of showSeats) {
+      // Seat must still be LOCKED
+
+      if (showSeat.status !== "LOCKED") {
+        if (showSeat.status === "BOOKED") {
+          throw new Error("Seat is already booked");
+        }
+
+        throw new Error("Seat is not locked");
+      }
+
+      // Lock must not have expired
+
+      if (
+        !showSeat.locked_until ||
+        new Date(showSeat.locked_until) <= new Date()
+      ) {
+        throw new Error("Seat lock has expired");
+      }
+    }
+
+    // 7. Confirm the booking
+
+    await booking.update(
+      {
+        booking_status: "CONFIRMED",
+      },
+      {
+        transaction,
+      }
+    );
+
+    // 8. Mark all seats as BOOKED
+
+    await ShowSeat.update(
+      {
+        status: "BOOKED",
+        locked_until: null,
+      },
+      {
+        where: {
+          id: {
+            [Op.in]: showSeatIds,
+          },
+        },
+        transaction,
+      }
+    );
+
+    // 9. Reload booking
+
+    await booking.reload({
+      transaction,
+    });
+
+    // 10. Get updated seats
+
+    const updatedShowSeats = await ShowSeat.findAll({
+      where: {
+        id: {
+          [Op.in]: showSeatIds,
+        },
+      },
+      transaction,
+    });
+
+    // 11. Return result
 
     return {
-      booking: updatedBookingResult.rows[0],
-      showSeat: updatedSeatResult.rows[0],
+      booking,
+      showSeats: updatedShowSeats,
     };
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 };

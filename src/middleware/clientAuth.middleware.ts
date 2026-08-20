@@ -46,10 +46,16 @@ export const authenticateClient = async (
       });
     }
 
-    // Data must be EXACTLY the same data
-    // that the client signed.
+    // Convert request body into the exact string
+    // used for RSA signature verification
     const body = JSON.stringify(req.body || {});
 
+    console.log("======================================");
+    console.log("REQUEST BODY:", req.body);
+    console.log("BODY STRING:", body);
+
+    // Data must be EXACTLY the same data
+    // that the client signed.
     const data = [
       clientCode,
       timestamp,
@@ -57,6 +63,10 @@ export const authenticateClient = async (
       req.originalUrl,
       body,
     ].join("|");
+
+    console.log("DATA BEING VERIFIED:");
+    console.log(data);
+    console.log("======================================");
 
     // Verify RSA signature
     const verifier = crypto.createVerify("RSA-SHA256");

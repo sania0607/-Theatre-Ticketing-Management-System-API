@@ -21,6 +21,8 @@ export const getAllBookings = async (_req: Request, res: Response) => {
 
     res.json(bookings);
   } catch (error) {
+    console.error("GET BOOKINGS ERROR:", error);
+
     res.status(500).json({
       message: "Failed to fetch bookings",
     });
@@ -41,6 +43,8 @@ export const getBookingById = async (req: Request, res: Response) => {
 
     res.json(booking);
   } catch (error) {
+    console.error("GET BOOKING ERROR:", error);
+
     res.status(500).json({
       message: "Failed to fetch booking",
     });
@@ -62,6 +66,8 @@ export const updateBooking = async (req: Request, res: Response) => {
 
     res.json(booking);
   } catch (error) {
+    console.error("UPDATE BOOKING ERROR:", error);
+
     res.status(500).json({
       message: "Failed to update booking",
     });
@@ -84,57 +90,22 @@ export const deleteBooking = async (req: Request, res: Response) => {
       message: "Booking deleted successfully",
     });
   } catch (error) {
+    console.error("DELETE BOOKING ERROR:", error);
+
     res.status(500).json({
       message: "Failed to delete booking",
     });
   }
 };
-export const createBookingWithSeat = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const { show_seat_id, ...booking } = req.body;
 
-    const newBooking =
-      await bookingService.createBookingWithSeat(
-        booking,
-        Number(show_seat_id)
-      );
-
-    res.status(201).json(newBooking);
-  } catch (error: any) {
-    console.error("CREATE BOOKING WITH SEAT ERROR:", error);
-
-    if (error.message === "Show seat not found") {
-      return res.status(404).json({
-        message: "Show seat not found",
-      });
-    }
-
-    if (error.message === "Seat is already booked") {
-      return res.status(409).json({
-        message: "Seat is already booked",
-      });
-    }
-
-    if (error.message === "Seat is currently locked") {
-      return res.status(409).json({
-        message: "Seat is currently locked",
-      });
-    }
-
-    res.status(500).json({
-      message: "Failed to create booking",
-    });
-  }
-};
 export const confirmBooking = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const { bookingReference } = req.params;
+    const bookingReference = String(
+      req.params.bookingReference
+    );
 
     const result =
       await bookingService.confirmBooking(
@@ -144,7 +115,7 @@ export const confirmBooking = async (
     res.json({
       message: "Booking confirmed successfully",
       booking: result.booking,
-      showSeat: result.showSeat,
+      showSeats: result.showSeats,
     });
   } catch (error: any) {
     console.error("CONFIRM BOOKING ERROR:", error);
