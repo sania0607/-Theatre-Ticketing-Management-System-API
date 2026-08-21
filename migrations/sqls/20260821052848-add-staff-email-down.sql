@@ -1,0 +1,4 @@
+DROP INDEX IF EXISTS staff_email_unique;
+
+ALTER TABLE staff
+DROP COLUMN IF EXISTS email;

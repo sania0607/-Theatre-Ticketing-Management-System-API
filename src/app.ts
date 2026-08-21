@@ -1,4 +1,6 @@
 import express from "express";
+import passport from "./config/passport";
+
 import theatreRoutes from "./routes/theatre.routes";
 import screenRoutes from "./routes/screen.routes";
 import movieRoutes from "./routes/movie.routes";
@@ -12,6 +14,7 @@ import staffRoutes from "./routes/staff.routes";
 const app = express();
 
 app.use(express.json());
+app.use(passport.initialize());
 
 // Register routes
 app.use(theatreRoutes);
