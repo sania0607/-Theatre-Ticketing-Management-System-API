@@ -1,6 +1,6 @@
-import { pool } from "../config/database";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import Staff from "../models/staff.model";
 
 export const createStaff = async (
   username: string,
@@ -8,26 +8,26 @@ export const createStaff = async (
 ) => {
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const result = await pool.query(
-    `INSERT INTO staff (username, password)
-     VALUES ($1, $2)
-     RETURNING id, username`,
-    [username, hashedPassword]
-  );
+  const staff = await Staff.create({
+    username,
+    password: hashedPassword,
+  });
 
-  return result.rows[0];
+  return {
+    id: staff.id,
+    username: staff.username,
+  };
 };
 
 export const loginStaff = async (
   username: string,
   password: string
 ) => {
-  const result = await pool.query(
-    `SELECT * FROM staff WHERE username = $1`,
-    [username]
-  );
-
-  const staff = result.rows[0];
+  const staff = await Staff.findOne({
+    where: {
+      username,
+    },
+  });
 
   if (!staff) {
     return null;
