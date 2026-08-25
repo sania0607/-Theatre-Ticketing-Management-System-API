@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import * as showSeatService from "../services/showseat.service";
+import { Authenticate, Authorize } from "../decorators/auth.decorator";
 
-export const createShowSeat = async (
-  req: Request,
-  res: Response
-) => {
+export class ShowSeatController {
+
+@Authenticate()
+async createShowSeat(req: Request, res: Response) {
   try {
     const showSeat = await showSeatService.createShowSeat(
       req.body
@@ -20,10 +21,9 @@ export const createShowSeat = async (
 }
 };
 
-export const getAllShowSeats = async (
-  _req: Request,
-  res: Response
-) => {
+@Authenticate()
+@Authorize("read:showseats")
+async getAllShowSeats(_req: Request, res: Response) {
   try {
     const showSeats =
       await showSeatService.getAllShowSeats();
@@ -38,10 +38,10 @@ export const getAllShowSeats = async (
   }
 };
 
-export const getShowSeatById = async (
-  req: Request,
-  res: Response
-) => {
+@Authenticate()
+@Authorize("read:showseats")
+async getShowSeatById(req: Request, res: Response) {
+
   try {
     const showSeat =
       await showSeatService.getShowSeatById(
@@ -64,10 +64,8 @@ export const getShowSeatById = async (
   }
 };
 
-export const updateShowSeat = async (
-  req: Request,
-  res: Response
-) => {
+@Authenticate()
+async updateShowSeat(req: Request, res: Response) {
   try {
     const showSeat =
       await showSeatService.updateShowSeat(
@@ -91,10 +89,8 @@ export const updateShowSeat = async (
   }
 };
 
-export const deleteShowSeat = async (
-  req: Request,
-  res: Response
-) => {
+@Authenticate()
+async deleteShowSeat(req: Request, res: Response) {
   try {
     const showSeat =
       await showSeatService.deleteShowSeat(
@@ -118,10 +114,10 @@ export const deleteShowSeat = async (
     });
   }
 };
-export const lockShowSeat = async (
-  req: Request,
-  res: Response
-) => {
+
+@Authenticate()
+@Authorize("create:booking")
+async lockShowSeat(req: Request, res: Response) {
   try {
     const {
   aggregatorName,
@@ -171,6 +167,7 @@ res.json({
 
     res.status(500).json({
       message: "Failed to lock show seat",
-    });
+      });
+    }
   }
-};
+}

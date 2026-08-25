@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import * as bookingService from "../services/booking.service";
+import { Authenticate, Authorize } from "../decorators/auth.decorator";
 
-export const createBooking = async (req: Request, res: Response) => {
+export class BookingController {
+
+@Authenticate()
+@Authorize("create:booking")
+async createBooking(req: Request, res: Response) {
   try {
     const booking = await bookingService.createBooking(req.body);
 
@@ -15,7 +20,9 @@ export const createBooking = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllBookings = async (_req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:booking")
+async getAllBookings(_req: Request, res: Response) {
   try {
     const bookings = await bookingService.getAllBookings();
 
@@ -29,7 +36,9 @@ export const getAllBookings = async (_req: Request, res: Response) => {
   }
 };
 
-export const getBookingById = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:booking")
+async getBookingById(req: Request, res: Response) {
   try {
     const booking = await bookingService.getBookingById(
       Number(req.params.id)
@@ -51,7 +60,8 @@ export const getBookingById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateBooking = async (req: Request, res: Response) => {
+@Authenticate()
+async updateBooking(req: Request, res: Response) {
   try {
     const booking = await bookingService.updateBooking(
       Number(req.params.id),
@@ -74,7 +84,8 @@ export const updateBooking = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteBooking = async (req: Request, res: Response) => {
+@Authenticate()
+async deleteBooking(req: Request, res: Response) {
   try {
     const booking = await bookingService.deleteBooking(
       Number(req.params.id)
@@ -98,10 +109,9 @@ export const deleteBooking = async (req: Request, res: Response) => {
   }
 };
 
-export const confirmBooking = async (
-  req: Request,
-  res: Response
-) => {
+@Authenticate()
+@Authorize("confirm:booking")
+async confirmBooking(req: Request, res: Response) {
   try {
     const bookingReference = String(
       req.params.bookingReference
@@ -146,6 +156,7 @@ export const confirmBooking = async (
 
     res.status(500).json({
       message: "Failed to confirm booking",
-    });
+      });
+    }
   }
-};
+}

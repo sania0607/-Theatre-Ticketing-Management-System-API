@@ -1,20 +1,18 @@
 import express from "express";
-import * as showController from "../controllers/show.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
-import { authenticateStaffOrClient } from "../middleware/authenticateStaffOrClient.middleware";
-import { requireAccess } from "../middleware/resourceAccess.middleware";
-
+import { ShowController } from "../controllers/show.controller";
 
 const router = express.Router();
 
-router.post("/shows", authenticateToken,showController.createShow);
+const showController = new ShowController();
 
-router.put("/shows/:id", authenticateToken,showController.updateShow);
+router.post("/shows",showController.createShow);
 
-router.delete("/shows/:id",authenticateToken, showController.deleteShow);
+router.put("/shows/:id", showController.updateShow);
 
-router.get("/shows",authenticateStaffOrClient,requireAccess("read:show"),showController.getAllShows);
+router.delete("/shows/:id",showController.deleteShow);
 
-router.get("/shows/:id",authenticateStaffOrClient,requireAccess("read:show"),showController.getShowById);
+router.get("/shows",showController.getAllShows);
+
+router.get("/shows/:id",showController.getShowById);
 
 export default router;

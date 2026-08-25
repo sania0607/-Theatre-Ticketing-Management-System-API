@@ -1,19 +1,18 @@
 import { Router } from "express";
-import * as screenController from "../controllers/screen.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
-import { authenticateStaffOrClient } from "../middleware/authenticateStaffOrClient.middleware";
-import { requireAccess } from "../middleware/resourceAccess.middleware";
+import { ScreenController } from "../controllers/screen.controller";
 
 const router = Router();
 
-router.post("/screens",authenticateToken, screenController.createScreen);
+const screenController = new ScreenController();
 
-router.put("/screens/:id", authenticateToken,screenController.updateScreen);
+router.post("/screens", screenController.createScreen.bind(screenController));
 
-router.delete("/screens/:id", authenticateToken,screenController.deleteScreen);
+router.put("/screens/:id",screenController.updateScreen.bind(screenController));
 
-router.get("/screens",authenticateStaffOrClient,requireAccess("read:screen"),screenController.getAllScreens);
+router.delete("/screens/:id", screenController.deleteScreen.bind(screenController));
 
-router.get("/screens/:id",authenticateStaffOrClient,requireAccess("read:screen"),screenController.getScreenById);
+router.get("/screens",screenController.getAllScreens.bind(screenController));
+
+router.get("/screens/:id",screenController.getScreenById.bind(screenController));
 
 export default router;

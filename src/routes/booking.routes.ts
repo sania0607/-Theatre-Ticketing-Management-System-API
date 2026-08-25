@@ -1,23 +1,21 @@
 import { Router } from "express";
-import * as bookingController from "../controllers/booking.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
-import { authenticateStaffOrClient } from "../middleware/authenticateStaffOrClient.middleware";
-import { requireAccess } from "../middleware/resourceAccess.middleware";
+import { BookingController } from "../controllers/booking.controller";
 
 const router = Router();
 
+const bookingController = new BookingController();
 
-router.post("/bookings",authenticateStaffOrClient,requireAccess("create:booking"),bookingController.createBooking);
+router.post("/bookings",bookingController.createBooking.bind(bookingController));
 
 
-router.get("/bookings",authenticateStaffOrClient,requireAccess("read:booking"),bookingController.getAllBookings);
+router.get("/bookings",bookingController.getAllBookings.bind(bookingController));
 
-router.post("/bookings/:bookingReference/confirm",authenticateStaffOrClient,requireAccess("confirm:booking"),bookingController.confirmBooking);
+router.post("/bookings/:bookingReference/confirm",bookingController.confirmBooking.bind(bookingController));
 
-router.get("/bookings/:id",authenticateStaffOrClient,requireAccess("read:booking"),bookingController.getBookingById);
+router.get("/bookings/:id",bookingController.getBookingById.bind(bookingController));
 
-router.put("/bookings/:id",authenticateToken,bookingController.updateBooking);
+router.put("/bookings/:id",bookingController.updateBooking.bind(bookingController));
 
-router.delete("/bookings/:id",authenticateToken,bookingController.deleteBooking);
+router.delete("/bookings/:id",bookingController.deleteBooking.bind(bookingController));
 
 export default router;

@@ -1,17 +1,18 @@
 import { Router } from "express";
-import * as bookingSeatController from "../controllers/bookingseat.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
+import { BookingSeatController } from "../controllers/bookingseat.controller";
 
 const router = Router();
 
-router.post("/booking-seats", authenticateToken,bookingSeatController.createBookingSeat);
+const bookingSeatController = new BookingSeatController();
 
-router.get("/booking-seats",authenticateToken, bookingSeatController.getAllBookingSeats);
+router.post("/booking-seats", bookingSeatController.createBookingSeat);
 
-router.get("/booking-seats/:id",authenticateToken, bookingSeatController.getBookingSeatById);
+router.get("/booking-seats",bookingSeatController.getAllBookingSeats);
 
-router.put("/booking-seats/:id",authenticateToken, bookingSeatController.updateBookingSeat);
+router.get("/booking-seats/:id",bookingSeatController.getBookingSeatById);
 
-router.delete("/booking-seats/:id",authenticateToken, bookingSeatController.deleteBookingSeat);
+router.put("/booking-seats/:id",bookingSeatController.updateBookingSeat);
+
+router.delete("/booking-seats/:id", bookingSeatController.deleteBookingSeat);
 
 export default router;

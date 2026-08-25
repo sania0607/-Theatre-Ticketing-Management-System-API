@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import * as ScreenService from "../services/screen.service";
+import {Authenticate,Authorize,} from "../decorators/auth.decorator";
 
-export const createScreen = async (req: Request, res: Response) => {
+
+export class ScreenController {
+
+@Authenticate()
+async createScreen(req: Request, res: Response) {
   try {
     const screen = await ScreenService.createScreen(req.body);
 
@@ -13,7 +18,9 @@ export const createScreen = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllScreens = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:screen")
+async getAllScreens(req: Request, res: Response) {
   try {
     const screens = await ScreenService.getAllScreens();
 
@@ -25,7 +32,9 @@ export const getAllScreens = async (req: Request, res: Response) => {
   }
 };
 
-export const getScreenById = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:screen")
+async getScreenById(req: Request, res: Response) {
   try {
     const screen = await ScreenService.getScreenById(
       Number(req.params.id)
@@ -45,7 +54,8 @@ export const getScreenById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateScreen = async (req: Request, res: Response) => {
+@Authenticate()
+async updateScreen(req: Request, res: Response) {
   try {
     const screen = await ScreenService.updateScreen(
       Number(req.params.id),
@@ -66,7 +76,8 @@ export const updateScreen = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteScreen = async (req: Request, res: Response) => {
+ @Authenticate()
+  async deleteScreen(req: Request, res: Response) {
   try {
     const screen = await ScreenService.deleteScreen(
       Number(req.params.id)
@@ -84,6 +95,7 @@ export const deleteScreen = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({
       message: "Error deleting screen",
-    });
+      });
+    }
   }
-};
+}

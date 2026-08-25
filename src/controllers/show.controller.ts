@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import * as showService from "../services/show.service";
+import { Authenticate, Authorize } from "../decorators/auth.decorator";
 
-export const createShow = async (req: Request, res: Response) => {
+export class ShowController {
+
+@Authenticate()
+async createShow(req: Request, res: Response) {
   try {
     const show = await showService.createShow(req.body);
 
@@ -15,7 +19,9 @@ export const createShow = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllShows = async (_req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:show")
+async getAllShows(_req: Request, res: Response) {
   try {
     const shows = await showService.getAllShows();
 
@@ -29,7 +35,9 @@ export const getAllShows = async (_req: Request, res: Response) => {
   }
 };
 
-export const getShowById = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:show")
+async getShowById(req: Request, res: Response) {
   try {
     const show = await showService.getShowById(
       Number(req.params.id)
@@ -51,7 +59,8 @@ export const getShowById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateShow = async (req: Request, res: Response) => {
+@Authenticate()
+async updateShow(req: Request, res: Response) {
   try {
     const show = await showService.updateShow(
       Number(req.params.id),
@@ -74,7 +83,8 @@ export const updateShow = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteShow = async (req: Request, res: Response) => {
+@Authenticate()
+async deleteShow(req: Request, res: Response) {
   try {
     const show = await showService.deleteShow(
       Number(req.params.id)
@@ -94,6 +104,7 @@ export const deleteShow = async (req: Request, res: Response) => {
 
     res.status(500).json({
       message: "Failed to delete show",
-    });
+      });
+    }
   }
-};
+}

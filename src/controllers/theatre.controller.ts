@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import * as theatreService from "../services/theatre.service";
+import { Authenticate, Authorize } from "../decorators/auth.decorator";
 
-export const createTheatre = async (req: Request, res: Response) => {
+
+export class TheatreController {
+
+@Authenticate()
+async createTheatre(req: Request, res: Response) {
   try {
     const theatre = await theatreService.createTheatre(req.body);
 
@@ -11,7 +16,9 @@ export const createTheatre = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllTheatres = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:theatre")
+  async getAllTheatres(req: Request, res: Response) {
   try {
     const theatres = await theatreService.getAllTheatres();
 
@@ -21,7 +28,9 @@ export const getAllTheatres = async (req: Request, res: Response) => {
   }
 };
 
-export const getTheatreById = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:theatre")
+  async getTheatreById(req: Request, res: Response) {
   try {
     const theatre = await theatreService.getTheatreById(
       Number(req.params.id)
@@ -38,8 +47,8 @@ export const getTheatreById = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error fetching theatre" });
   }
 };
-
-export const updateTheatre = async (req: Request, res: Response) => {
+@Authenticate()
+async updateTheatre(req: Request, res: Response) {
   try {
     const theatre = await theatreService.updateTheatre(
       Number(req.params.id),
@@ -58,7 +67,8 @@ export const updateTheatre = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteTheatre = async (req: Request, res: Response) => {
+ @Authenticate()
+ async deleteTheatre(req: Request, res: Response) {
   try {
     const theatre = await theatreService.deleteTheatre(
       Number(req.params.id)
@@ -74,6 +84,9 @@ export const deleteTheatre = async (req: Request, res: Response) => {
       message: "Theatre deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting theatre" });
+    res.status(500).json({ 
+      message: "Error deleting theatre",
+      });
+    }
   }
-};
+}

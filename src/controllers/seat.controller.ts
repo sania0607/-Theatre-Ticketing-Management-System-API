@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import * as seatService from "../services/seat.service";
+import { Authenticate, Authorize } from "../decorators/auth.decorator";
 
-export const createSeat = async (req: Request, res: Response) => {
+export class SeatController {
+
+@Authenticate()
+async createSeat(req: Request, res: Response) {
   try {
     const seat = await seatService.createSeat(req.body);
 
@@ -15,7 +19,9 @@ export const createSeat = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllSeats = async (_req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:seat")
+async getAllSeats(_req: Request, res: Response) {
   try {
     const seats = await seatService.getAllSeats();
 
@@ -29,7 +35,9 @@ export const getAllSeats = async (_req: Request, res: Response) => {
   }
 };
 
-export const getSeatById = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:seat")
+async getSeatById(req: Request, res: Response) {
   try {
     const seat = await seatService.getSeatById(
       Number(req.params.id)
@@ -51,7 +59,8 @@ export const getSeatById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateSeat = async (req: Request, res: Response) => {
+@Authenticate()
+async updateSeat(req: Request, res: Response) {
   try {
     const seat = await seatService.updateSeat(
       Number(req.params.id),
@@ -74,7 +83,8 @@ export const updateSeat = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteSeat = async (req: Request, res: Response) => {
+@Authenticate()
+async deleteSeat(req: Request, res: Response) {
   try {
     const seat = await seatService.deleteSeat(
       Number(req.params.id)
@@ -94,6 +104,7 @@ export const deleteSeat = async (req: Request, res: Response) => {
 
     res.status(500).json({
       message: "Failed to delete seat",
-    });
+      });
+    }
   }
-};
+}

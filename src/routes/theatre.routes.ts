@@ -1,21 +1,19 @@
 import { Router } from "express";
-import * as theatreController from "../controllers/theatre.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
-import { authenticateStaffOrClient } from "../middleware/authenticateStaffOrClient.middleware";
-import { requireAccess } from "../middleware/resourceAccess.middleware";
-
+import { TheatreController } from "../controllers/theatre.controller";
 
 const router = Router();
 
-router.post("/theatres", authenticateToken,theatreController.createTheatre);
+const theatreController = new TheatreController();
 
-router.put("/theatres/:id", authenticateToken,theatreController.updateTheatre);
+router.post("/theatres", theatreController.createTheatre.bind(theatreController));
 
-router.delete("/theatres/:id", authenticateToken,theatreController.deleteTheatre);
+router.put("/theatres/:id", theatreController.updateTheatre.bind(theatreController));
 
-router.get("/theaters",authenticateStaffOrClient,requireAccess("read:theater"),theatreController.getAllTheatres);
+router.delete("/theatres/:id", theatreController.deleteTheatre.bind(theatreController));
 
-router.get("/theaters/:id",authenticateStaffOrClient,requireAccess("read:theater"),theatreController.getTheatreById);
+router.get("/theaters",theatreController.getAllTheatres.bind(theatreController));
+
+router.get("/theaters/:id",theatreController.getTheatreById.bind(theatreController));
 
 
 export default router;

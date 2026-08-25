@@ -1,20 +1,20 @@
 import { Router } from "express";
-import * as MovieController from "../controllers/movie.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
-import { authenticateStaffOrClient } from "../middleware/authenticateStaffOrClient.middleware";
-import { requireAccess } from "../middleware/resourceAccess.middleware";
+import { MovieController } from "../controllers/movie.controller";
 
 
 const router = Router();
 
-router.post("/movies", authenticateToken,MovieController.createMovie);
+const movieController = new MovieController();
 
-router.put("/movies/:id",authenticateToken, MovieController.updateMovie);
+router.post("/movies",  movieController.createMovie.bind(movieController));
 
-router.delete("/movies/:id", authenticateToken,MovieController.deleteMovie);
+router.put("/movies/:id",movieController.updateMovie.bind(movieController));
 
-router.get("/movies",authenticateStaffOrClient,requireAccess("read:movie"),MovieController.getAllMovies);
+router.delete("/movies/:id", movieController.deleteMovie.bind(movieController));
 
-router.get("/movies/:id",authenticateStaffOrClient,requireAccess("read:movie"),MovieController.getMovieById);
+router.get("/movies",movieController.getAllMovies.bind(movieController));
+
+router.get("/movies/:id",movieController.getMovieById.bind(movieController)
+);
 
 export default router;

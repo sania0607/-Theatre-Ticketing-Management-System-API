@@ -1,8 +1,10 @@
 import { Router } from "express";
-import * as staffController from "../controllers/staff.controller";
+import { StaffController } from "../controllers/staff.controller";
 import * as googleAuthController from "../controllers/googleAuth.controller";
 
 const router = Router();
+
+const staffController = new StaffController();
 
 router.post("/staff", staffController.createStaff);
 

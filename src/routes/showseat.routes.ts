@@ -1,22 +1,20 @@
 import { Router } from "express";
-import * as showSeatController from "../controllers/showseat.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
-import { authenticateStaffOrClient } from "../middleware/authenticateStaffOrClient.middleware";
-import { requireAccess } from "../middleware/resourceAccess.middleware";
-
+import { ShowSeatController } from "../controllers/showseat.controller";
 
 const router = Router();
 
-router.post("/show-seats",authenticateToken, showSeatController.createShowSeat);
+const showSeatController = new ShowSeatController();
 
-router.put("/show-seats/:id", authenticateToken,showSeatController.updateShowSeat);
+router.post("/show-seats",showSeatController.createShowSeat.bind(showSeatController));
 
-router.delete("/show-seats/:id",authenticateToken, showSeatController.deleteShowSeat);
+router.put("/show-seats/:id",showSeatController.updateShowSeat.bind(showSeatController));
 
-router.post("/show-seats/:id/lock",authenticateStaffOrClient,requireAccess("create:booking"),showSeatController.lockShowSeat);
+router.delete("/show-seats/:id", showSeatController.deleteShowSeat.bind(showSeatController));
 
-router.get("/show-seats",authenticateStaffOrClient,requireAccess("read:showseats"),showSeatController.getAllShowSeats);
+router.post("/show-seats/:id/lock",showSeatController.lockShowSeat.bind(showSeatController));
 
-router.get("/show-seats/:id",authenticateStaffOrClient,requireAccess("read:showseats"),showSeatController.getShowSeatById);
+router.get("/show-seats",showSeatController.getAllShowSeats.bind(showSeatController));
+
+router.get("/show-seats/:id",showSeatController.getShowSeatById.bind(showSeatController));
 
 export default router;

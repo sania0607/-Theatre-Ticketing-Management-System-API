@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import * as bookingSeatService from "../services/bookingseat.service";
+import { Authenticate } from "../decorators/auth.decorator";
 
-export const createBookingSeat = async (
-  req: Request,
-  res: Response
-) => {
+export class BookingSeatController {
+
+@Authenticate()
+async createBookingSeat(req: Request, res: Response) {
   try {
     const bookingSeat =
       await bookingSeatService.createBookingSeat(req.body);
@@ -19,10 +20,8 @@ export const createBookingSeat = async (
   }
 };
 
-export const getAllBookingSeats = async (
-  _req: Request,
-  res: Response
-) => {
+@Authenticate()
+async getAllBookingSeats(_req: Request, res: Response) {
   try {
     const bookingSeats =
       await bookingSeatService.getAllBookingSeats();
@@ -35,10 +34,8 @@ export const getAllBookingSeats = async (
   }
 };
 
-export const getBookingSeatById = async (
-  req: Request,
-  res: Response
-) => {
+@Authenticate()
+async getBookingSeatById(req: Request, res: Response) {
   try {
     const bookingSeat =
       await bookingSeatService.getBookingSeatById(
@@ -59,10 +56,8 @@ export const getBookingSeatById = async (
   }
 };
 
-export const updateBookingSeat = async (
-  req: Request,
-  res: Response
-) => {
+@Authenticate()
+async updateBookingSeat(req: Request, res: Response) {
   try {
     const bookingSeat =
       await bookingSeatService.updateBookingSeat(
@@ -84,10 +79,8 @@ export const updateBookingSeat = async (
   }
 };
 
-export const deleteBookingSeat = async (
-  req: Request,
-  res: Response
-) => {
+  @Authenticate()
+  async deleteBookingSeat(req: Request, res: Response) {
   try {
     const bookingSeat =
       await bookingSeatService.deleteBookingSeat(
@@ -106,6 +99,7 @@ export const deleteBookingSeat = async (
   } catch (error) {
     res.status(500).json({
       message: "Failed to delete booking seat",
-    });
+      });
+    }
   }
-};
+}

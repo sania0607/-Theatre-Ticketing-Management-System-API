@@ -1,8 +1,12 @@
 import { Request, Response } from "express";
 import * as MovieService from "../services/movie.service";
+import {Authenticate,Authorize,} from "../decorators/auth.decorator";
 
-export const createMovie = async (req: Request, res: Response) => {
-  try {
+export class MovieController {
+
+  @Authenticate()
+  async createMovie(req: Request, res: Response) {
+    try {
     const movie = await MovieService.createMovie(req.body);
 
     res.status(201).json(movie);
@@ -13,7 +17,9 @@ export const createMovie = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllMovies = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:movie")
+async getAllMovies(req: Request, res: Response) {
   try {
     const movies = await MovieService.getAllMovies();
 
@@ -25,7 +31,9 @@ export const getAllMovies = async (req: Request, res: Response) => {
   }
 };
 
-export const getMovieById = async (req: Request, res: Response) => {
+@Authenticate()
+@Authorize("read:movie")
+ async getMovieById(req: Request, res: Response) {
   try {
     const movie = await MovieService.getMovieById(
       Number(req.params.id)
@@ -45,7 +53,9 @@ export const getMovieById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateMovie = async (req: Request, res: Response) => {
+
+  @Authenticate()
+  async updateMovie(req: Request, res: Response) {
   try {
     const movie = await MovieService.updateMovie(
       Number(req.params.id),
@@ -66,7 +76,8 @@ export const updateMovie = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteMovie = async (req: Request, res: Response) => {
+@Authenticate()
+  async deleteMovie(req: Request, res: Response) {
   try {
     const movie = await MovieService.deleteMovie(
       Number(req.params.id)
@@ -84,6 +95,7 @@ export const deleteMovie = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({
       message: "Error deleting movie",
-    });
+      });
+    }
   }
-};
+}

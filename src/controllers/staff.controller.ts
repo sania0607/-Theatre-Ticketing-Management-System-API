@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import * as staffService from "../services/staff.service";
 
-export const createStaff = async (req: Request, res: Response) => {
-  try {
+export class StaffController {
+
+  async createStaff(req: Request, res: Response) {
+    try{
     const { username, password } = req.body;
 
     const staff = await staffService.createStaff(username, password);
@@ -17,7 +19,7 @@ export const createStaff = async (req: Request, res: Response) => {
   }
 };
 
-export const loginStaff = async (req: Request, res: Response) => {
+async loginStaff(req: Request, res: Response) {
   try {
     const { username, password } = req.body;
 
@@ -35,6 +37,7 @@ export const loginStaff = async (req: Request, res: Response) => {
 
     res.status(500).json({
       message: "Failed to login",
-    });
+      });
+    }
   }
-};
+}

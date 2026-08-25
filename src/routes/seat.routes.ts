@@ -1,20 +1,19 @@
 import express from "express";
-import * as seatController from "../controllers/seat.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
-import { authenticateStaffOrClient } from "../middleware/authenticateStaffOrClient.middleware";
-import { requireAccess } from "../middleware/resourceAccess.middleware";
+import { SeatController } from "../controllers/seat.controller";
 
 
 const router = express.Router();
 
-router.post("/seats", authenticateToken,seatController.createSeat);
+const seatController = new SeatController();
 
-router.put("/seats/:id", authenticateToken,seatController.updateSeat);
+router.post("/seats", seatController.createSeat.bind(seatController));
 
-router.delete("/seats/:id", authenticateToken,seatController.deleteSeat);
+router.put("/seats/:id", seatController.updateSeat.bind(seatController));
 
-router.get("/seats",authenticateStaffOrClient,requireAccess("read:seat"),seatController.getAllSeats);
+router.delete("/seats/:id", seatController.deleteSeat.bind(seatController));
 
-router.get("/seats/:id",authenticateStaffOrClient,requireAccess("read:seat"),seatController.getSeatById);
+router.get("/seats",seatController.getAllSeats.bind(seatController));
+
+router.get("/seats/:id",seatController.getSeatById.bind(seatController));
 
 export default router;
