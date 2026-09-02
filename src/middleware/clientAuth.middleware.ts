@@ -15,7 +15,7 @@ export const authenticateClient = async (
     if (!clientCode || !timestamp || !signature) {
       return res.status(401).json({
         message:
-          "Client code, timestamp and signature are required",
+          "enter correct token",
       });
     }
 

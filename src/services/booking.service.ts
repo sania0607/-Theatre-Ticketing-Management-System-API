@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import Booking from "../models/booking.model";
 import BookingSeat from "../models/bookingseat.model";
 import ShowSeat from "../models/showseat.model";
+import Seat from "../models/seat.model";
 
 // CREATE BOOKING
 
@@ -41,7 +42,26 @@ export const getAllBookings = async () => {
 // GET BOOKING BY ID
 
 export const getBookingById = async (id: number) => {
-  const booking = await Booking.findByPk(id);
+  const booking = await Booking.findByPk(id, {
+    include: [
+      {
+        model: BookingSeat,
+        as: "bookingSeats",
+        include: [
+          {
+            model: ShowSeat,
+            as: "showSeat",
+            include: [
+              {
+                model: Seat,
+                as: "seat",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 
   return booking;
 };
@@ -288,8 +308,14 @@ export const confirmBooking = async (
           [Op.in]: showSeatIds,
         },
       },
-      transaction,
-    });
+      include: [
+    {
+      model: Seat,
+      as: "seat",
+    },
+  ],
+  transaction,
+});
 
     // 11. Return result
 
