@@ -8,7 +8,6 @@ import showRoutes from "./routes/show.routes";
 import seatRoutes from "./routes/seat.routes";
 import showseatRoutes from "./routes/showseat.routes";
 import bookingRoutes from "./routes/booking.routes";
-import bookingSeatRoutes from "./routes/bookingseat.routes";
 import staffRoutes from "./routes/staff.routes";
 import authRoutes from "./routes/auth.routes";
 
@@ -25,7 +24,6 @@ app.use(showRoutes);
 app.use(seatRoutes);
 app.use(showseatRoutes);
 app.use(bookingRoutes);
-app.use(bookingSeatRoutes);
 app.use(staffRoutes);
 app.use("/auth", authRoutes);
 

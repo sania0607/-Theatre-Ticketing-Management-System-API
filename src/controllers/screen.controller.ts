@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import * as ScreenService from "../services/screen.service";
-import {Authenticate,Authorize,} from "../decorators/auth.decorator";
+import {Authenticate,Authorize, StaffOnly} from "../decorators/auth.decorator";
 
 
 export class ScreenController {
 
 @Authenticate()
+@StaffOnly()
 async createScreen(req: Request, res: Response) {
   try {
     const screen = await ScreenService.createScreen(req.body);
@@ -55,6 +56,7 @@ async getScreenById(req: Request, res: Response) {
 };
 
 @Authenticate()
+@StaffOnly()
 async updateScreen(req: Request, res: Response) {
   try {
     const screen = await ScreenService.updateScreen(
@@ -77,6 +79,7 @@ async updateScreen(req: Request, res: Response) {
 };
 
  @Authenticate()
+ @StaffOnly()
   async deleteScreen(req: Request, res: Response) {
   try {
     const screen = await ScreenService.deleteScreen(

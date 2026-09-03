@@ -99,3 +99,34 @@ export function Authorize(requiredAccess: string) {
     };
   };
 }
+
+export function StaffOnly() {
+  return function (
+    originalMethod: (
+      req: Request,
+      res: Response
+    ) => any,
+    context: ClassMethodDecoratorContext
+  ) {
+    return function (
+      this: any,
+      req: Request,
+      res: Response
+    ): any {
+
+      // Staff authenticated through JWT
+      if ((req as any).user) {
+        return originalMethod.call(
+          this,
+          req,
+          res
+        );
+      }
+
+      // Client is not allowed
+      return res.status(403).json({
+        message: "Staff access required",
+      });
+    };
+  };
+}

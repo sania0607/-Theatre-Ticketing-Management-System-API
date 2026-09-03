@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import * as showSeatService from "../services/showseat.service";
-import { Authenticate, Authorize } from "../decorators/auth.decorator";
+import { Authenticate, Authorize, StaffOnly } from "../decorators/auth.decorator";
 
 export class ShowSeatController {
 
 @Authenticate()
+@StaffOnly()
 async createShowSeat(req: Request, res: Response) {
   try {
     const showSeat = await showSeatService.createShowSeat(
@@ -65,6 +66,7 @@ async getShowSeatById(req: Request, res: Response) {
 };
 
 @Authenticate()
+@StaffOnly()
 async updateShowSeat(req: Request, res: Response) {
   try {
     const showSeat =
@@ -90,6 +92,7 @@ async updateShowSeat(req: Request, res: Response) {
 };
 
 @Authenticate()
+@StaffOnly()
 async deleteShowSeat(req: Request, res: Response) {
   try {
     const showSeat =
