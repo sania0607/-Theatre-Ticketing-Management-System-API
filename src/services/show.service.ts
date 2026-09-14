@@ -1,6 +1,9 @@
 import Show from "../models/show.model";
 import Movie from "../models/movie.model";
 import Screen from "../models/screen.model";
+import Seat from "../models/seat.model";
+import ShowSeat from "../models/showseat.model";
+import { sequelize } from "../config/sequelize";
 
 export const createShow = async (show: any) => {
   const {
@@ -12,16 +15,41 @@ export const createShow = async (show: any) => {
     ticket_price,
   } = show;
 
-  const newShow = await Show.create({
-    movie_id,
-    screen_id,
-    show_date,
-    start_time,
-    end_time,
-    ticket_price,
-  });
+  return await sequelize.transaction(async (transaction) => {
+    // Create the show
+    const newShow = await Show.create(
+      {
+        movie_id,
+        screen_id,
+        show_date,
+        start_time,
+        end_time,
+        ticket_price,
+      },
+      { transaction }
+    );
 
-  return newShow;
+    // Get all seats belonging to this screen
+    const seats = await Seat.findAll({
+      where: {
+        screen_id,
+      },
+      transaction,
+    });
+
+    // Create ShowSeat records for this particular show
+    await ShowSeat.bulkCreate(
+      seats.map((seat) => ({
+        show_id: newShow.id,
+        seat_id: seat.id,
+        status: "AVAILABLE",
+        locked_until: null,
+      })),
+      { transaction }
+    );
+
+    return newShow;
+  });
 };
 
 export const getAllShows = async () => {

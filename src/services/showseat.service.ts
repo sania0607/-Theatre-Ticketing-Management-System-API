@@ -34,6 +34,19 @@ export const getAllShowSeats = async () => {
   return showSeats;
 };
 
+// GET SHOW SEATS BY SHOW ID
+
+export const getShowSeatsByShowId = async (showId: number) => {
+  const showSeats = await ShowSeat.findAll({
+    where: {
+      show_id: showId,
+    },
+    order: [["seat_id", "ASC"]],
+  });
+
+  return showSeats;
+};
+
 // GET SHOW SEAT BY ID
 
 export const getShowSeatById = async (id: number) => {
