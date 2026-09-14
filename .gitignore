@@ -5,3 +5,4 @@ dist/
 *.log
 keys/client-private.pem
 database.json
+keys/

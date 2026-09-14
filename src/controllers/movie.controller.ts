@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import * as MovieService from "../services/movie.service";
-import {Authenticate,Authorize,} from "../decorators/auth.decorator";
+import {Authenticate,Authorize,StaffOnly} from "../decorators/auth.decorator";
 
 export class MovieController {
 
   @Authenticate()
+  @StaffOnly()
   async createMovie(req: Request, res: Response) {
     try {
     const movie = await MovieService.createMovie(req.body);
@@ -55,6 +56,7 @@ async getAllMovies(req: Request, res: Response) {
 
 
   @Authenticate()
+  @StaffOnly()
   async updateMovie(req: Request, res: Response) {
   try {
     const movie = await MovieService.updateMovie(
@@ -77,6 +79,7 @@ async getAllMovies(req: Request, res: Response) {
 };
 
 @Authenticate()
+@StaffOnly()
   async deleteMovie(req: Request, res: Response) {
   try {
     const movie = await MovieService.deleteMovie(

@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import * as theatreService from "../services/theatre.service";
-import { Authenticate, Authorize } from "../decorators/auth.decorator";
+import { Authenticate, Authorize, StaffOnly } from "../decorators/auth.decorator";
 
 
 export class TheatreController {
 
 @Authenticate()
+@StaffOnly()
 async createTheatre(req: Request, res: Response) {
   try {
     const theatre = await theatreService.createTheatre(req.body);
@@ -48,6 +49,7 @@ async createTheatre(req: Request, res: Response) {
   }
 };
 @Authenticate()
+@StaffOnly()
 async updateTheatre(req: Request, res: Response) {
   try {
     const theatre = await theatreService.updateTheatre(
@@ -68,6 +70,7 @@ async updateTheatre(req: Request, res: Response) {
 };
 
  @Authenticate()
+ @StaffOnly()
  async deleteTheatre(req: Request, res: Response) {
   try {
     const theatre = await theatreService.deleteTheatre(
