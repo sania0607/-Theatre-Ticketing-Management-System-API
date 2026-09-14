@@ -24,10 +24,18 @@ async createShowSeat(req: Request, res: Response) {
 
 @Authenticate()
 @Authorize("read:showseats")
-async getAllShowSeats(_req: Request, res: Response) {
+async getAllShowSeats(req: Request, res: Response) {
   try {
+    const showId = Number(req.query.show_id);
+
+    if (!showId) {
+      return res.status(400).json({
+        message: "show_id is required",
+      });
+    }
+
     const showSeats =
-      await showSeatService.getAllShowSeats();
+      await showSeatService.getShowSeatsByShowId(showId);
 
     res.json(showSeats);
   } catch (error) {
