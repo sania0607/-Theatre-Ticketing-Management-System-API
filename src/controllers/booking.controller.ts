@@ -4,158 +4,275 @@ import { Authenticate, Authorize } from "../decorators/auth.decorator";
 
 export class BookingController {
 
-@Authenticate()
-@Authorize("create:booking")
-async createBooking(req: Request, res: Response) {
-  try {
-    const booking = await bookingService.createBooking(req.body);
+  // CREATE BOOKING WITH MULTIPLE SEATS
 
-    res.status(201).json(booking);
-  } catch (error) {
-    console.error("CREATE BOOKING ERROR:", error);
+  @Authenticate()
+  @Authorize("create:booking")
+  async createBooking(req: Request, res: Response) {
+    try {
+      const {
+        show_id,
+        aggregator_name,
+        total_amount,
+        showSeatIds,
+      } = req.body;
 
-    res.status(500).json({
-      message: "Failed to create booking",
-    });
-  }
-};
+      if (
+        !Array.isArray(showSeatIds) ||
+        showSeatIds.length === 0
+      ) {
+        return res.status(400).json({
+          message: "showSeatIds must contain at least one seat",
+        });
+      }
 
-@Authenticate()
-@Authorize("read:booking")
-async getAllBookings(_req: Request, res: Response) {
-  try {
-    const bookings = await bookingService.getAllBookings();
+      const booking =
+        await bookingService.createBookingWithSeats(
+          {
+            show_id,
+            aggregator_name,
+            total_amount,
+          },
+          showSeatIds
+        );
 
-    res.json(bookings);
-  } catch (error) {
-    console.error("GET BOOKINGS ERROR:", error);
+      res.status(201).json({
+        message: "Booking created successfully",
+        booking,
+      });
 
-    res.status(500).json({
-      message: "Failed to fetch bookings",
-    });
-  }
-};
+    } catch (error: any) {
+      console.error("CREATE BOOKING ERROR:", error);
 
-@Authenticate()
-@Authorize("read:booking")
-async getBookingById(req: Request, res: Response) {
-  try {
-    const booking = await bookingService.getBookingById(
-      Number(req.params.id)
-    );
+      if (
+        error.message ===
+        "One or more show seats not found"
+      ) {
+        return res.status(404).json({
+          message: error.message,
+        });
+      }
 
-    if (!booking) {
-      return res.status(404).json({
-        message: "Booking not found",
+      if (
+        error.message ===
+        "One or more seats are already booked"
+      ) {
+        return res.status(409).json({
+          message: error.message,
+        });
+      }
+
+      if (
+        error.message ===
+        "One or more seats are not locked"
+      ) {
+        return res.status(409).json({
+          message: error.message,
+        });
+      }
+
+      if (
+        error.message ===
+        "One or more seat locks have expired"
+      ) {
+        return res.status(409).json({
+          message: error.message,
+        });
+      }
+
+      res.status(500).json({
+        message: "Failed to create booking",
       });
     }
-
-    res.json(booking);
-  } catch (error) {
-    console.error("GET BOOKING ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to fetch booking",
-    });
   }
-};
 
-@Authenticate()
-async updateBooking(req: Request, res: Response) {
-  try {
-    const booking = await bookingService.updateBooking(
-      Number(req.params.id),
-      req.body
-    );
 
-    if (!booking) {
-      return res.status(404).json({
-        message: "Booking not found",
+  // GET ALL BOOKINGS
+
+  @Authenticate()
+  @Authorize("read:booking")
+  async getAllBookings(_req: Request, res: Response) {
+    try {
+      const bookings =
+        await bookingService.getAllBookings();
+
+      res.json(bookings);
+    } catch (error) {
+      console.error("GET BOOKINGS ERROR:", error);
+
+      res.status(500).json({
+        message: "Failed to fetch bookings",
       });
     }
-
-    res.json(booking);
-  } catch (error) {
-    console.error("UPDATE BOOKING ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to update booking",
-    });
   }
-};
 
-@Authenticate()
-async deleteBooking(req: Request, res: Response) {
-  try {
-    const booking = await bookingService.deleteBooking(
-      Number(req.params.id)
-    );
 
-    if (!booking) {
-      return res.status(404).json({
-        message: "Booking not found",
+  // GET BOOKING BY ID
+
+  @Authenticate()
+  @Authorize("read:booking")
+  async getBookingById(req: Request, res: Response) {
+    try {
+      const booking =
+        await bookingService.getBookingById(
+          Number(req.params.id)
+        );
+
+      if (!booking) {
+        return res.status(404).json({
+          message: "Booking not found",
+        });
+      }
+
+      res.json(booking);
+    } catch (error) {
+      console.error("GET BOOKING ERROR:", error);
+
+      res.status(500).json({
+        message: "Failed to fetch booking",
       });
     }
-
-    res.json({
-      message: "Booking deleted successfully",
-    });
-  } catch (error) {
-    console.error("DELETE BOOKING ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to delete booking",
-    });
   }
-};
 
-@Authenticate()
-@Authorize("confirm:booking")
-async confirmBooking(req: Request, res: Response) {
-  try {
-    const bookingReference = String(
-      req.params.bookingReference
-    );
 
-    const result =
-      await bookingService.confirmBooking(
-        bookingReference
+  // UPDATE BOOKING
+
+  @Authenticate()
+  @Authorize("update:booking")
+  async updateBooking(req: Request, res: Response) {
+    try {
+      const booking =
+        await bookingService.updateBooking(
+          Number(req.params.id),
+          req.body
+        );
+
+      if (!booking) {
+        return res.status(404).json({
+          message: "Booking not found",
+        });
+      }
+
+      res.json(booking);
+    } catch (error) {
+      console.error("UPDATE BOOKING ERROR:", error);
+
+      res.status(500).json({
+        message: "Failed to update booking",
+      });
+    }
+  }
+
+
+  // DELETE BOOKING
+
+  @Authenticate()
+  async deleteBooking(req: Request, res: Response) {
+    try {
+      const booking =
+        await bookingService.deleteBooking(
+          Number(req.params.id)
+        );
+
+      if (!booking) {
+        return res.status(404).json({
+          message: "Booking not found",
+        });
+      }
+
+      res.json({
+        message: "Booking deleted successfully",
+      });
+    } catch (error) {
+      console.error("DELETE BOOKING ERROR:", error);
+
+      res.status(500).json({
+        message: "Failed to delete booking",
+      });
+    }
+  }
+
+
+  // CONFIRM BOOKING
+
+  @Authenticate()
+  @Authorize("confirm:booking")
+  async confirmBooking(req: Request, res: Response) {
+    try {
+      const bookingReference = String(
+        req.params.bookingReference
       );
 
-    res.json({
-      message: "Booking confirmed successfully",
-      booking: result.booking,
-      showSeats: result.showSeats,
-    });
-  } catch (error: any) {
-    console.error("CONFIRM BOOKING ERROR:", error);
+      const result =
+        await bookingService.confirmBooking(
+          bookingReference
+        );
 
-    if (error.message === "Booking not found") {
-      return res.status(404).json({
-        message: "Booking not found",
+      res.json({
+        message: "Booking confirmed successfully",
+        booking: result.booking,
+        showSeats: result.showSeats,
       });
-    }
 
-    if (error.message === "Booking is not pending") {
-      return res.status(409).json({
-        message: "Booking is not pending",
-      });
-    }
+    } catch (error: any) {
+      console.error(
+        "CONFIRM BOOKING ERROR:",
+        error
+      );
 
-    if (error.message === "Show seat not found") {
-      return res.status(404).json({
-        message: "Show seat not found",
-      });
-    }
+      if (error.message === "Booking not found") {
+        return res.status(404).json({
+          message: "Booking not found",
+        });
+      }
 
-    if (error.message === "Seat lock has expired") {
-      return res.status(409).json({
-        message: "Seat lock has expired",
-      });
-    }
+      if (
+        error.message ===
+        "Booking is not pending"
+      ) {
+        return res.status(409).json({
+          message: "Booking is not pending",
+        });
+      }
 
-    res.status(500).json({
-      message: "Failed to confirm booking",
+      if (
+        error.message ===
+        "One or more show seats not found"
+      ) {
+        return res.status(404).json({
+          message: error.message,
+        });
+      }
+
+      if (
+        error.message ===
+        "One or more seats are already booked"
+      ) {
+        return res.status(409).json({
+          message: error.message,
+        });
+      }
+
+      if (
+        error.message ===
+        "One or more seats are not locked"
+      ) {
+        return res.status(409).json({
+          message: error.message,
+        });
+      }
+
+      if (
+        error.message ===
+        "One or more seat locks have expired"
+      ) {
+        return res.status(409).json({
+          message: error.message,
+        });
+      }
+
+      res.status(500).json({
+        message: "Failed to confirm booking",
       });
     }
   }

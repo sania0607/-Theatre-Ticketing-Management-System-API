@@ -24,18 +24,10 @@ async createShowSeat(req: Request, res: Response) {
 
 @Authenticate()
 @Authorize("read:showseats")
-async getAllShowSeats(req: Request, res: Response) {
+async getAllShowSeats(_req: Request, res: Response) {
   try {
-    const showId = Number(req.query.show_id);
-
-    if (!showId) {
-      return res.status(400).json({
-        message: "show_id is required",
-      });
-    }
-
     const showSeats =
-      await showSeatService.getShowSeatsByShowId(showId);
+      await showSeatService.getAllShowSeats();
 
     res.json(showSeats);
   } catch (error) {
@@ -45,7 +37,8 @@ async getAllShowSeats(req: Request, res: Response) {
       message: "Failed to fetch show seats",
     });
   }
-};
+}
+
 
 @Authenticate()
 @Authorize("read:showseats")
@@ -130,30 +123,15 @@ async deleteShowSeat(req: Request, res: Response) {
 @Authorize("create:booking")
 async lockShowSeat(req: Request, res: Response) {
   try {
-    const {
-  aggregatorName,
-  totalAmount
-} = req.body;
+    const showSeat = await showSeatService.lockShowSeat(
+      Number(req.params.id)
+    );
 
-if (!aggregatorName || totalAmount === undefined) {
-  return res.status(400).json({
-    message: "aggregatorName and totalAmount are required"
-  });
-}
-
-const result = await showSeatService.lockShowSeat(
-  Number(req.params.id),
-  aggregatorName,
-  Number(totalAmount)
-);
-
-res.json({
-  message: "Show seat locked successfully",
-  bookingReference: result.booking.booking_reference,
-  bookingStatus: result.booking.booking_status,
-  lockedUntil: result.showSeat.locked_until,
-  showSeat: result.showSeat,
-});
+    res.json({
+      message: "Show seat locked successfully",
+      lockedUntil: showSeat.locked_until,
+      showSeat,
+    });
 
   } catch (error: any) {
     console.error("LOCK SHOW SEAT ERROR:", error);
@@ -178,7 +156,7 @@ res.json({
 
     res.status(500).json({
       message: "Failed to lock show seat",
-      });
-    }
+    });
   }
+}
 }

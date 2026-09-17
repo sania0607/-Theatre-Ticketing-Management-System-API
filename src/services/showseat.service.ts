@@ -1,8 +1,6 @@
 import { sequelize } from "../config/sequelize";
 
 import ShowSeat from "../models/showseat.model";
-import Booking from "../models/booking.model";
-import BookingSeat from "../models/bookingseat.model";
 
 // CREATE SHOW SEAT
 
@@ -99,12 +97,10 @@ export const deleteShowSeat = async (id: number) => {
   return showSeat;
 };
 
-// LOCK SHOW SEAT + CREATE PENDING BOOKING
+// LOCK SHOW SEAT 
 
 export const lockShowSeat = async (
-  showSeatId: number,
-  aggregatorName: string,
-  totalAmount: number
+  showSeatId: number
 ) => {
   return await sequelize.transaction(async (transaction) => {
 
@@ -159,46 +155,6 @@ export const lockShowSeat = async (
       }
     );
 
-    // 6. Generate booking reference
-
-    const bookingReference =
-      `BK-${Date.now()}-${Math.floor(
-        Math.random() * 10000
-      )}`;
-
-    // 7. Create PENDING booking
-
-    const booking = await Booking.create(
-      {
-        show_id: showSeat.show_id,
-        aggregator_name: aggregatorName,
-        booking_reference: bookingReference,
-        booking_status: "PENDING",
-        total_amount: totalAmount,
-        booked_at: new Date(),
-      },
-      {
-        transaction,
-      }
-    );
-
-    // 8. Connect booking with ShowSeat
-
-    await BookingSeat.create(
-      {
-        booking_id: booking.id,
-        show_seat_id: showSeat.id,
-      },
-      {
-        transaction,
-      }
-    );
-
-    // 9. Return both
-
-    return {
-      booking,
-      showSeat,
-    };
-  });
-};
+    return showSeat;
+    });
+  };
