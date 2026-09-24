@@ -13,6 +13,8 @@ router.delete("/show-seats/:id", showSeatController.deleteShowSeat.bind(showSeat
 
 router.post("/show-seats/:id/lock",showSeatController.lockShowSeat.bind(showSeatController));
 
+router.post("/show-seats/:id/release",showSeatController.releaseShowSeat.bind(showSeatController));
+
 router.get("/show-seats",showSeatController.getAllShowSeats.bind(showSeatController));
 
 router.get("/show-seats/:id",showSeatController.getShowSeatById.bind(showSeatController));
