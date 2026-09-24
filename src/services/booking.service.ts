@@ -66,6 +66,14 @@ export const getBookingById = async (id: number) => {
   return booking;
 };
 
+export const getBookingByReference = async (bookingReference: string) => {
+  return Booking.findOne({
+    where: {
+      booking_reference: bookingReference,
+    },
+  });
+};
+
 // UPDATE BOOKING
 
 export const updateBooking = async (
@@ -323,5 +331,60 @@ export const confirmBooking = async (
       booking,
       showSeats: updatedShowSeats,
     };
+  });
+};
+
+export const cancelBooking = async (bookingReference: string) => {
+  return sequelize.transaction(async (transaction) => {
+    const booking = await Booking.findOne({
+      where: {
+        booking_reference: bookingReference,
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    if (booking.booking_status === "CANCELLED") {
+      return booking;
+    }
+
+    if (!["PENDING", "CONFIRMED"].includes(booking.booking_status || "")) {
+      throw new Error("Booking cannot be cancelled");
+    }
+
+    const bookingSeats = await BookingSeat.findAll({
+      where: {
+        booking_id: booking.id,
+      },
+      transaction,
+    });
+
+    await ShowSeat.update(
+      {
+        status: "AVAILABLE",
+        locked_until: null,
+      },
+      {
+        where: {
+          id: {
+            [Op.in]: bookingSeats.map((bookingSeat) => bookingSeat.show_seat_id),
+          },
+        },
+        transaction,
+      }
+    );
+
+    await booking.update(
+      {
+        booking_status: "CANCELLED",
+      },
+      { transaction }
+    );
+
+    return booking;
   });
 };

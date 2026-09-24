@@ -61,6 +61,28 @@ async getBookingById(req: Request, res: Response) {
 };
 
 @Authenticate()
+async getBookingByReference(req: Request, res: Response) {
+  try {
+    const booking = await bookingService.getBookingByReference(
+      String(req.params.bookingReference)
+    );
+
+    if (!booking) {
+      return res.status(404).json({
+        message: "Booking not found",
+      });
+    }
+
+    res.json(booking);
+  } catch (error) {
+    console.error("GET BOOKING STATUS ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch booking status",
+    });
+  }
+};
+
+@Authenticate()
 async updateBooking(req: Request, res: Response) {
   try {
     const booking = await bookingService.updateBooking(
@@ -159,4 +181,27 @@ async confirmBooking(req: Request, res: Response) {
       });
     }
   }
+
+@Authenticate()
+@Authorize("confirm:booking")
+async cancelBooking(req: Request, res: Response) {
+  try {
+    const booking = await bookingService.cancelBooking(
+      String(req.params.bookingReference)
+    );
+
+    res.json({
+      message: "Booking cancelled successfully",
+      booking,
+    });
+  } catch (error: any) {
+    console.error("CANCEL BOOKING ERROR:", error);
+
+    if (error.message === "Booking not found") {
+      return res.status(404).json({ message: error.message });
+    }
+
+    res.status(409).json({ message: error.message });
+  }
+}
 }

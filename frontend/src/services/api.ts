@@ -89,4 +89,30 @@ export const confirmBooking = async (
   return data;
 };
 
+export const getBookingStatus = async (bookingReference: string) => {
+  const response = await fetch(
+    `${API_BASE_URL}/aggregator/bookings/${bookingReference}/status`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch booking status");
+  }
+
+  return response.json();
+};
+
+export const cancelBooking = async (bookingReference: string) => {
+  const response = await fetch(
+    `${API_BASE_URL}/aggregator/bookings/${bookingReference}/cancel`,
+    { method: "POST" }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to cancel booking");
+  }
+
+  return data;
+};
+
 
