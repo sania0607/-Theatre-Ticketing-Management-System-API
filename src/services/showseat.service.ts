@@ -1,4 +1,5 @@
 import { sequelize } from "../config/sequelize";
+import { Op } from "sequelize";
 
 import ShowSeat from "../models/showseat.model";
 import Booking from "../models/booking.model";
@@ -37,6 +38,22 @@ export const getAllShowSeats = async () => {
 // GET SHOW SEATS BY SHOW ID
 
 export const getShowSeatsByShowId = async (showId: number) => {
+  await ShowSeat.update(
+    {
+      status: "AVAILABLE",
+      locked_until: null,
+    },
+    {
+      where: {
+        show_id: showId,
+        status: "LOCKED",
+        locked_until: {
+          [Op.lte]: new Date(),
+        },
+      },
+    }
+  );
+
   const showSeats = await ShowSeat.findAll({
     where: {
       show_id: showId,
@@ -106,73 +123,70 @@ export const lockShowSeat = async (
   aggregatorName: string,
   totalAmount: number
 ) => {
+  const result = await lockShowSeats(
+    [showSeatId],
+    aggregatorName,
+    totalAmount
+  );
+
+  return {
+    booking: result.booking,
+    showSeat: result.showSeats[0],
+  };
+};
+
+export const lockShowSeats = async (
+  showSeatIds: number[],
+  aggregatorName: string,
+  totalAmount: number
+) => {
   return await sequelize.transaction(async (transaction) => {
+    const showSeats = [];
 
-    // 1. Find and lock the ShowSeat row
-
-    const showSeat = await ShowSeat.findByPk(
-      showSeatId,
-      {
+    for (const showSeatId of [...new Set(showSeatIds)]) {
+      const showSeat = await ShowSeat.findByPk(showSeatId, {
         transaction,
         lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!showSeat) {
+        throw new Error("Show seat not found");
       }
-    );
 
-    if (!showSeat) {
-      throw new Error("Show seat not found");
-    }
-
-    // 2. Check if seat is already booked
-
-    if (showSeat.status === "BOOKED") {
-      throw new Error("Seat is already booked");
-    }
-
-    // 3. Check if seat is currently locked
-
-    if (
-      showSeat.status === "LOCKED" &&
-      showSeat.locked_until &&
-      new Date(showSeat.locked_until) > new Date()
-    ) {
-      throw new Error("Seat is already locked");
-    }
-
-    // 4. If previous lock expired,
-    //    allow the seat to be locked again.
-
-    const lockDuration = 5 * 60 * 1000; // 5 minutes
-
-    const lockedUntil = new Date(
-      Date.now() + lockDuration
-    );
-
-    // 5. Lock the seat
-
-    await showSeat.update(
-      {
-        status: "LOCKED",
-        locked_until: lockedUntil,
-      },
-      {
-        transaction,
+      if (showSeat.status === "BOOKED") {
+        throw new Error("Seat is already booked");
       }
-    );
 
-    // 6. Generate booking reference
+      if (
+        showSeat.status === "LOCKED" &&
+        showSeat.locked_until &&
+        new Date(showSeat.locked_until) > new Date()
+      ) {
+        throw new Error("Seat is already locked");
+      }
 
-    const bookingReference =
-      `BK-${Date.now()}-${Math.floor(
-        Math.random() * 10000
-      )}`;
+      const lockedUntil = new Date(Date.now() + 5 * 60 * 1000);
 
-    // 7. Create PENDING booking
+      await showSeat.update(
+        {
+          status: "LOCKED",
+          locked_until: lockedUntil,
+        },
+        { transaction }
+      );
+
+      showSeats.push(showSeat);
+    }
+
+    if (showSeats.length === 0) {
+      throw new Error("At least one seat is required");
+    }
 
     const booking = await Booking.create(
       {
-        show_id: showSeat.show_id,
+        show_id: showSeats[0].show_id,
         aggregator_name: aggregatorName,
-        booking_reference: bookingReference,
+        booking_reference: `BK-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
         booking_status: "PENDING",
         total_amount: totalAmount,
         booked_at: new Date(),
@@ -182,23 +196,34 @@ export const lockShowSeat = async (
       }
     );
 
-    // 8. Connect booking with ShowSeat
-
-    await BookingSeat.create(
-      {
+    await BookingSeat.bulkCreate(
+      showSeats.map((showSeat) => ({
         booking_id: booking.id,
         show_seat_id: showSeat.id,
-      },
-      {
-        transaction,
-      }
+      })),
+      { transaction }
     );
-
-    // 9. Return both
 
     return {
       booking,
-      showSeat,
+      showSeats,
     };
   });
+};
+
+export const releaseShowSeat = async (showSeatId: number) => {
+  const showSeat = await ShowSeat.findByPk(showSeatId);
+
+  if (!showSeat) {
+    throw new Error("Show seat not found");
+  }
+
+  if (showSeat.status === "LOCKED") {
+    await showSeat.update({
+      status: "AVAILABLE",
+      locked_until: null,
+    });
+  }
+
+  return showSeat;
 };

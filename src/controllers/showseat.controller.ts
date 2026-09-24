@@ -131,18 +131,23 @@ async deleteShowSeat(req: Request, res: Response) {
 async lockShowSeat(req: Request, res: Response) {
   try {
     const {
-  aggregatorName,
-  totalAmount
-} = req.body;
+      aggregatorName,
+      totalAmount,
+      showSeatIds,
+    } = req.body;
 
-if (!aggregatorName || totalAmount === undefined) {
+const requestedSeatIds = Array.isArray(showSeatIds)
+  ? showSeatIds.map(Number)
+  : [Number(req.params.id)];
+
+if (!aggregatorName || totalAmount === undefined || requestedSeatIds.some((id) => !id)) {
   return res.status(400).json({
-    message: "aggregatorName and totalAmount are required"
+    message: "aggregatorName, totalAmount, and valid seats are required"
   });
 }
 
-const result = await showSeatService.lockShowSeat(
-  Number(req.params.id),
+const result = await showSeatService.lockShowSeats(
+  requestedSeatIds,
   aggregatorName,
   Number(totalAmount)
 );
@@ -151,8 +156,8 @@ res.json({
   message: "Show seat locked successfully",
   bookingReference: result.booking.booking_reference,
   bookingStatus: result.booking.booking_status,
-  lockedUntil: result.showSeat.locked_until,
-  showSeat: result.showSeat,
+  lockedUntil: result.showSeats[0].locked_until,
+  showSeats: result.showSeats,
 });
 
   } catch (error: any) {
@@ -178,6 +183,23 @@ res.json({
 
     res.status(500).json({
       message: "Failed to lock show seat",
+      });
+    }
+  }
+
+  @Authenticate()
+  @Authorize("create:booking")
+  async releaseShowSeat(req: Request, res: Response) {
+    try {
+      const showSeat = await showSeatService.releaseShowSeat(
+        Number(req.params.id)
+      );
+
+      res.json(showSeat);
+    } catch (error) {
+      console.error("RELEASE SHOW SEAT ERROR:", error);
+      res.status(500).json({
+        message: "Failed to release show seat",
       });
     }
   }
