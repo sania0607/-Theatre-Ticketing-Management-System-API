@@ -11,7 +11,7 @@ function Seats() {
   const navigate = useNavigate();
 
   const [seats, setSeats] = useState<ShowSeat[]>([]);
-  const [selectedSeat, setSelectedSeat] = useState<ShowSeat | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<ShowSeat[]>([]);
   const [loading, setLoading] = useState(true);
   const [locking, setLocking] = useState(false);
   const [error, setError] = useState("");
@@ -41,19 +41,23 @@ function Seats() {
       return;
     }
 
-    setSelectedSeat(seat);
+    setSelectedSeats((currentSeats) =>
+      currentSeats.some((currentSeat) => currentSeat.id === seat.id)
+        ? currentSeats.filter((currentSeat) => currentSeat.id !== seat.id)
+        : [...currentSeats, seat]
+    );
     setError("");
   };
 
   const handleLockSeat = async () => {
-    if (!selectedSeat) return;
+    if (selectedSeats.length === 0) return;
 
     setLocking(true);
     setError("");
 
     try {
       const response = await fetch(
-        `http://localhost:4000/aggregator/show-seats/${selectedSeat.id}/lock`,
+        `http://localhost:4000/aggregator/show-seats/${selectedSeats[0].id}/lock`,
         {
           method: "POST",
           headers: {
@@ -61,7 +65,8 @@ function Seats() {
           },
           body: JSON.stringify({
             aggregatorName: "MovieBox",
-            totalAmount: 350,
+            totalAmount: selectedSeats.length * 350,
+            showSeatIds: selectedSeats.map((seat) => seat.id),
           }),
         }
       );
@@ -74,9 +79,11 @@ function Seats() {
         );
       }
 
-      navigate(
-        `/booking/${data.bookingReference}`
-      );
+      if (!data.checkoutUrl) {
+        throw new Error("Payment checkout is unavailable");
+      }
+
+      window.location.assign(data.checkoutUrl);
 
     } catch (error: any) {
       console.error(error);
@@ -207,7 +214,7 @@ function Seats() {
                   className={`seat ${
                     seat.status.toLowerCase()
                   } ${
-                    selectedSeat?.id === seat.id
+                    selectedSeats.some((selected) => selected.id === seat.id)
                       ? "selected"
                       : ""
                   }`}
@@ -253,7 +260,7 @@ function Seats() {
 
 
             {/* SELECTED SEAT */}
-            {selectedSeat && (
+            {selectedSeats.length > 0 && (
 
               <div className="booking-summary">
 
@@ -261,7 +268,7 @@ function Seats() {
                   <p>Selected Seat</p>
 
                   <h3>
-                    Seat {selectedSeat.seat_id}
+                    {selectedSeats.length} seat{selectedSeats.length > 1 ? "s" : ""} selected
                   </h3>
                 </div>
 
@@ -269,7 +276,7 @@ function Seats() {
                   <p>Price</p>
 
                   <h3>
-                    ₹350
+                    ₹{selectedSeats.length * 350}
                   </h3>
                 </div>
 

@@ -1,31 +1,53 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { cancelBooking, getBookingStatus } from "../services/api";
+import { useSearchParams } from "react-router-dom";
 import { useNavigate, useParams } from "react-router-dom";
-import { confirmBooking } from "../services/api";
 import "../App.css";
 
 function BookingConfirmation() {
   const { bookingReference } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const paymentStatus = searchParams.get("payment");
+  const [bookingStatus, setBookingStatus] = useState("PENDING");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [booking, setBooking] = useState<any>(null);
-  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!bookingReference || paymentStatus === "cancelled") return;
 
-  const handleConfirmBooking = async () => {
+    let attempts = 0;
+    const checkStatus = async () => {
+      try {
+        const booking = await getBookingStatus(bookingReference);
+        setBookingStatus(booking.booking_status || "PENDING");
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    checkStatus();
+    const interval = window.setInterval(() => {
+      attempts += 1;
+      checkStatus();
+      if (attempts >= 10) window.clearInterval(interval);
+    }, 2000);
+
+    return () => window.clearInterval(interval);
+  }, [bookingReference, paymentStatus]);
+
+  const handleCancelBooking = async () => {
     if (!bookingReference) return;
 
+    setCancelling(true);
+    setCancelError("");
     try {
-      setLoading(true);
-      setError("");
-
-      const data = await confirmBooking(bookingReference);
-
-      setBooking(data);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to confirm booking");
+      await cancelBooking(bookingReference);
+      setBookingStatus("CANCELLED");
+    } catch (error: any) {
+      setCancelError(error.message || "Failed to cancel booking");
     } finally {
-      setLoading(false);
+      setCancelling(false);
     }
   };
 
@@ -44,72 +66,55 @@ function BookingConfirmation() {
 
       <main className="booking-page">
 
-        {!booking && (
+        {paymentStatus === "cancelled" && (
           <>
-            <h1>Confirm Your Booking</h1>
+            <h1>Payment Cancelled</h1>
 
             <div className="booking-card">
-
               <p>
-                <strong>Booking Reference:</strong>
+                Your payment was cancelled. The seat will be released when
+                the temporary lock expires.
+              </p>
+              <button
+                className="book-btn"
+                onClick={() => navigate("/")}
+              >
+                Back to Home
+              </button>
+            </div>
+          </>
+        )}
+
+        {paymentStatus !== "cancelled" && (
+          <>
+            <div className="success-icon">
+              {paymentStatus === "success" ? "✓" : "..."}
+            </div>
+
+            <h1>{bookingStatus === "CONFIRMED" ? "Booking Confirmed" : bookingStatus === "CANCELLED" ? "Booking Cancelled" : "Payment Received"}</h1>
+
+            <div className="booking-card">
+              <p>
+                <strong>Booking Reference</strong>
               </p>
 
               <h2>{bookingReference}</h2>
 
               <p>
-                Your seat has been temporarily locked.
+                {bookingStatus === "CONFIRMED"
+                  ? "Your payment is complete and your seat is confirmed."
+                  : bookingStatus === "CANCELLED"
+                  ? "Your booking was cancelled and the payment was refunded."
+                  : "Stripe has received your payment. Checking booking confirmation..."}
               </p>
 
-              <button
-                className="book-btn"
-                onClick={handleConfirmBooking}
-                disabled={loading}
-              >
-                {loading
-                  ? "Confirming..."
-                  : "Confirm Booking"}
-              </button>
-
-              {error && (
-                <p className="error-message">
-                  {error}
-                </p>
+              {bookingStatus === "CONFIRMED" && (
+                <button className="book-btn" onClick={handleCancelBooking} disabled={cancelling}>
+                  {cancelling ? "Cancelling..." : "Cancel Booking"}
+                </button>
               )}
 
-            </div>
-          </>
-        )}
-
-        {booking && (
-          <>
-            <div className="success-icon">
-              ✓
-            </div>
-
-            <h1>Booking Confirmed!</h1>
-
-            <div className="booking-card">
-
-              <p>
-                <strong>Booking Reference</strong>
-              </p>
-
-              <h2>{booking.booking.booking_reference}</h2>
-
-              <p>
-                <strong>Status:</strong>{" "}
-                {booking.booking.booking_status}
-              </p>
-
-              <p>
-                <strong>Aggregator:</strong>{" "}
-                {booking.booking.aggregator_name}
-              </p>
-
-              <p>
-                <strong>Total Amount:</strong>{" "}
-                ₹{booking.booking.total_amount}
-              </p>
+              {cancelError && <p className="error-message">{cancelError}</p>}
 
               <button
                 className="book-btn"

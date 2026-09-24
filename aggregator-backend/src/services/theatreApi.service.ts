@@ -68,9 +68,9 @@ export const getMoviesFromTheatre = async () => {
 };
 
 
-export const getShowsFromTheatre = async () => {
+export const getShowsFromTheatre = async (movieId?: number) => {
   const method = "GET";
-  const url = "/shows";
+  const url = movieId ? `/shows?movie_id=${movieId}` : "/shows";
   const body = {};
 
   const { timestamp, signature } =
@@ -127,16 +127,20 @@ export const getShowSeatsFromTheatre = async (
 
 
 export const lockSeatAtTheatre = async (
-  showSeatId: number,
+  showSeatIds: number | number[],
   aggregatorName: string,
   totalAmount: number
 ) => {
   const method = "POST";
-  const url = `/show-seats/${showSeatId}/lock`;
+  const firstShowSeatId = Array.isArray(showSeatIds)
+    ? showSeatIds[0]
+    : showSeatIds;
+  const url = `/show-seats/${firstShowSeatId}/lock`;
 
   const body = {
     aggregatorName,
     totalAmount,
+    showSeatIds: Array.isArray(showSeatIds) ? showSeatIds : [showSeatIds],
   };
 
   const { timestamp, signature } =
@@ -161,6 +165,31 @@ export const lockSeatAtTheatre = async (
   }
 
   return response.json();
+};
+
+export const releaseSeatAtTheatre = async (showSeatIds: number | number[]) => {
+  for (const showSeatId of Array.isArray(showSeatIds) ? showSeatIds : [showSeatIds]) {
+  const method = "POST";
+  const url = `/show-seats/${showSeatId}/release`;
+  const body = {};
+
+  const { timestamp, signature } = makeSignature(method, url, body);
+
+  const response = await fetch(`${THEATRE_API_URL}${url}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "x-client-code": CLIENT_CODE,
+      "x-timestamp": timestamp,
+      "x-signature": signature,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  }
 };
 
 
@@ -189,6 +218,55 @@ export const confirmBookingAtTheatre = async (
       body: JSON.stringify(body),
     }
   );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+};
+
+export const getBookingStatusFromTheatre = async (
+  bookingReference: string
+) => {
+  const method = "GET";
+  const url = `/bookings/${bookingReference}/status`;
+  const body = {};
+
+  const { timestamp, signature } = makeSignature(method, url, body);
+
+  const response = await fetch(`${THEATRE_API_URL}${url}`, {
+    method,
+    headers: {
+      "x-client-code": CLIENT_CODE,
+      "x-timestamp": timestamp,
+      "x-signature": signature,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+};
+
+export const cancelBookingAtTheatre = async (bookingReference: string) => {
+  const method = "POST";
+  const url = `/bookings/${bookingReference}/cancel`;
+  const body = {};
+  const { timestamp, signature } = makeSignature(method, url, body);
+
+  const response = await fetch(`${THEATRE_API_URL}${url}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "x-client-code": CLIENT_CODE,
+      "x-timestamp": timestamp,
+      "x-signature": signature,
+    },
+    body: JSON.stringify(body),
+  });
 
   if (!response.ok) {
     throw new Error(await response.text());

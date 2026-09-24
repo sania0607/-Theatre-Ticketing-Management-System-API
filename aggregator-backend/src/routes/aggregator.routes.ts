@@ -5,8 +5,11 @@ import {
   getShowsFromTheatre,
   getShowSeatsFromTheatre,
   lockSeatAtTheatre,
-  confirmBookingAtTheatre,
+  releaseSeatAtTheatre,
+  getBookingStatusFromTheatre,
+  cancelBookingAtTheatre,
 } from "../services/theatreApi.service";
+import { createCheckoutSession, refundBookingPayment } from "../services/stripe.service";
 
 const router = Router();
 
@@ -23,9 +26,13 @@ router.get("/movies", async (_req, res) => {
 });
 
 
-router.get("/shows", async (_req, res) => {
+router.get("/shows", async (req, res) => {
   try {
-    const shows = await getShowsFromTheatre();
+    const movieId = req.query.movie_id
+      ? Number(req.query.movie_id)
+      : undefined;
+
+    const shows = await getShowsFromTheatre(movieId);
     res.json(shows);
   } catch (error) {
     console.error(error);
@@ -61,39 +68,74 @@ router.get("/show-seats", async (req, res) => {
 router.post("/show-seats/:id/lock", async (req, res) => {
   try {
     const result = await lockSeatAtTheatre(
-      Number(req.params.id),
+      Array.isArray(req.body.showSeatIds)
+        ? req.body.showSeatIds.map(Number)
+        : Number(req.params.id),
       req.body.aggregatorName,
       Number(req.body.totalAmount)
     );
 
-    res.json(result);
+    let checkoutSession;
+
+    try {
+      checkoutSession = await createCheckoutSession(
+        result.bookingReference,
+        Number(req.body.totalAmount)
+      );
+    } catch (error) {
+      await releaseSeatAtTheatre(
+        Array.isArray(req.body.showSeatIds)
+          ? req.body.showSeatIds.map(Number)
+          : Number(req.params.id)
+      );
+      throw error;
+    }
+
+    res.json({
+      ...result,
+      checkoutUrl: checkoutSession.url,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("LOCK SEAT CHECKOUT ERROR:", error);
     res.status(500).json({
-      message: "Failed to lock seat",
+      message: error instanceof Error ? error.message : "Failed to lock seat",
     });
   }
 });
 
+router.get("/bookings/:bookingReference/status", async (req, res) => {
+  try {
+    const booking = await getBookingStatusFromTheatre(
+      req.params.bookingReference
+    );
 
-router.post(
-  "/bookings/:bookingReference/confirm",
-  async (req, res) => {
-    try {
-      const result =
-        await confirmBookingAtTheatre(
-          req.params.bookingReference
-        );
-
-      res.json(result);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({
-        message: "Failed to confirm booking",
-      });
-    }
+    res.json(booking);
+  } catch (error) {
+    console.error("GET BOOKING STATUS ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch booking status",
+    });
   }
-);
+});
+
+router.post("/bookings/:bookingReference/cancel", async (req, res) => {
+  try {
+    const bookingReference = req.params.bookingReference;
+    const booking = await getBookingStatusFromTheatre(bookingReference);
+
+    if (booking.booking_status === "CONFIRMED") {
+      await refundBookingPayment(bookingReference);
+    }
+
+    const result = await cancelBookingAtTheatre(bookingReference);
+    res.json(result);
+  } catch (error) {
+    console.error("CANCEL BOOKING ERROR:", error);
+    res.status(409).json({
+      message: error instanceof Error ? error.message : "Failed to cancel booking",
+    });
+  }
+});
 
 
 export default router;
