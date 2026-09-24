@@ -22,9 +22,13 @@ async createShow(req: Request, res: Response) {
 
 @Authenticate()
 @Authorize("read:show")
-async getAllShows(_req: Request, res: Response) {
+async getAllShows(req: Request, res: Response) {
   try {
-    const shows = await showService.getAllShows();
+    const movieId = req.query.movie_id
+      ? Number(req.query.movie_id)
+      : undefined;
+
+    const shows = await showService.getAllShows(movieId);
 
     res.json(shows);
   } catch (error) {

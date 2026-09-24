@@ -4,6 +4,7 @@ import Screen from "../models/screen.model";
 import Seat from "../models/seat.model";
 import ShowSeat from "../models/showseat.model";
 import { sequelize } from "../config/sequelize";
+import { Op } from "sequelize";
 
 export const createShow = async (show: any) => {
   const {
@@ -52,8 +53,14 @@ export const createShow = async (show: any) => {
   });
 };
 
-export const getAllShows = async () => {
+export const getAllShows = async (movieId?: number) => {
   const shows = await Show.findAll({
+    where: {
+      end_time: {
+        [Op.gt]: new Date(),
+      },
+      ...(movieId ? { movie_id: movieId } : {}),
+    },
     order: [["id", "ASC"]],
   });
 

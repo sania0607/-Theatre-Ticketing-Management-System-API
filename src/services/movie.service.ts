@@ -1,4 +1,6 @@
 import Movie from "../models/movie.model";
+import Show from "../models/show.model";
+import { Op } from "sequelize";
 
 export const createMovie = async (movie: any) => {
   const {
@@ -22,6 +24,19 @@ export const createMovie = async (movie: any) => {
 
 export const getAllMovies = async () => {
   const movies = await Movie.findAll({
+    include: [
+      {
+        model: Show,
+        as: "shows",
+        attributes: [],
+        required: true,
+        where: {
+          end_time: {
+            [Op.gt]: new Date(),
+          },
+        },
+      },
+    ],
     order: [["id", "ASC"]],
   });
 
