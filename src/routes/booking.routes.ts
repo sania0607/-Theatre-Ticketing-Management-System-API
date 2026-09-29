@@ -14,6 +14,10 @@ router.post("/bookings/:bookingReference/confirm",bookingController.confirmBooki
 
 router.post("/bookings/:bookingReference/cancel",bookingController.cancelBooking.bind(bookingController));
 
+router.post("/bookings/:bookingReference/checkout-session",bookingController.setCheckoutSession.bind(bookingController));
+
+router.post("/bookings/:bookingReference/complete-cancel",bookingController.completeBookingCancellation.bind(bookingController));
+
 router.get("/bookings/:bookingReference/status",bookingController.getBookingByReference.bind(bookingController));
 
 router.get("/bookings/:id",bookingController.getBookingById.bind(bookingController));

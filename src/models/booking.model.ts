@@ -8,6 +8,7 @@ class Booking extends Model {
   public booking_reference!: string | null;
   public booking_status!: string | null;
   public total_amount!: number | null;
+  public stripe_checkout_session_id!: string | null;
   public booked_at!: Date | null;
 }
 
@@ -43,6 +44,12 @@ Booking.init(
     total_amount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
+    },
+
+    stripe_checkout_session_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
     },
 
     booked_at: {

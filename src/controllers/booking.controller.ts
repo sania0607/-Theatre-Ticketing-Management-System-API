@@ -83,6 +83,32 @@ async getBookingByReference(req: Request, res: Response) {
 };
 
 @Authenticate()
+@Authorize("create:booking")
+async setCheckoutSession(req: Request, res: Response) {
+  try {
+    const checkoutSessionId = req.body.checkoutSessionId;
+
+    if (typeof checkoutSessionId !== "string" || !checkoutSessionId.startsWith("cs_")) {
+      return res.status(400).json({
+        message: "Valid Stripe Checkout Session ID is required",
+      });
+    }
+
+    const booking = await bookingService.setBookingCheckoutSession(
+      String(req.params.bookingReference),
+      checkoutSessionId
+    );
+
+    res.json(booking);
+  } catch (error: any) {
+    console.error("SAVE CHECKOUT SESSION ERROR:", error);
+    res.status(error.message === "Booking not found" ? 404 : 409).json({
+      message: error.message || "Failed to save Checkout Session",
+    });
+  }
+};
+
+@Authenticate()
 async updateBooking(req: Request, res: Response) {
   try {
     const booking = await bookingService.updateBooking(
@@ -191,7 +217,7 @@ async cancelBooking(req: Request, res: Response) {
     );
 
     res.json({
-      message: "Booking cancelled successfully",
+      message: "Booking cancellation started",
       booking,
     });
   } catch (error: any) {
@@ -202,6 +228,26 @@ async cancelBooking(req: Request, res: Response) {
     }
 
     res.status(409).json({ message: error.message });
+  }
+}
+
+@Authenticate()
+@Authorize("confirm:booking")
+async completeBookingCancellation(req: Request, res: Response) {
+  try {
+    const booking = await bookingService.completeBookingCancellation(
+      String(req.params.bookingReference)
+    );
+
+    res.json({
+      message: "Booking cancelled successfully",
+      booking,
+    });
+  } catch (error: any) {
+    console.error("COMPLETE BOOKING CANCELLATION ERROR:", error);
+    res.status(error.message === "Booking not found" ? 404 : 409).json({
+      message: error.message || "Failed to complete booking cancellation",
+    });
   }
 }
 }

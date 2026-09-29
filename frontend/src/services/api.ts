@@ -28,9 +28,9 @@ export interface Show {
   ticket_price: string;
 }
 
-export const getShows = async (movieId: number): Promise<Show[]> => {
+export const getShows = async (movieId?: number): Promise<Show[]> => {
   const response = await fetch(
-    `${API_BASE_URL}/aggregator/shows?movie_id=${movieId}`
+    `${API_BASE_URL}/aggregator/shows${movieId !== undefined ? `?movie_id=${movieId}` : ""}`
   );
 
   if (!response.ok) {
@@ -102,9 +102,22 @@ export const getBookingStatus = async (bookingReference: string) => {
 };
 
 export const cancelBooking = async (bookingReference: string) => {
+  const token = sessionStorage.getItem(
+    `booking-cancellation:${bookingReference}`
+  );
+
+  if (!token) {
+    throw new Error("Cancellation is only available in the browser session used to book");
+  }
+
   const response = await fetch(
     `${API_BASE_URL}/aggregator/bookings/${bookingReference}/cancel`,
-    { method: "POST" }
+    {
+      method: "POST",
+      headers: {
+        "x-booking-cancellation-token": token,
+      },
+    }
   );
   const data = await response.json();
 
@@ -112,6 +125,7 @@ export const cancelBooking = async (bookingReference: string) => {
     throw new Error(data.message || "Failed to cancel booking");
   }
 
+  sessionStorage.removeItem(`booking-cancellation:${bookingReference}`);
   return data;
 };
 

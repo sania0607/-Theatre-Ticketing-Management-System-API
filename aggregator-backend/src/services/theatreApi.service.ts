@@ -128,8 +128,7 @@ export const getShowSeatsFromTheatre = async (
 
 export const lockSeatAtTheatre = async (
   showSeatIds: number | number[],
-  aggregatorName: string,
-  totalAmount: number
+  aggregatorName: string
 ) => {
   const method = "POST";
   const firstShowSeatId = Array.isArray(showSeatIds)
@@ -139,7 +138,6 @@ export const lockSeatAtTheatre = async (
 
   const body = {
     aggregatorName,
-    totalAmount,
     showSeatIds: Array.isArray(showSeatIds) ? showSeatIds : [showSeatIds],
   };
 
@@ -254,6 +252,59 @@ export const getBookingStatusFromTheatre = async (
 export const cancelBookingAtTheatre = async (bookingReference: string) => {
   const method = "POST";
   const url = `/bookings/${bookingReference}/cancel`;
+  const body = {};
+  const { timestamp, signature } = makeSignature(method, url, body);
+
+  const response = await fetch(`${THEATRE_API_URL}${url}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "x-client-code": CLIENT_CODE,
+      "x-timestamp": timestamp,
+      "x-signature": signature,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+};
+
+export const saveCheckoutSessionAtTheatre = async (
+  bookingReference: string,
+  checkoutSessionId: string
+) => {
+  const method = "POST";
+  const url = `/bookings/${bookingReference}/checkout-session`;
+  const body = { checkoutSessionId };
+  const { timestamp, signature } = makeSignature(method, url, body);
+
+  const response = await fetch(`${THEATRE_API_URL}${url}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "x-client-code": CLIENT_CODE,
+      "x-timestamp": timestamp,
+      "x-signature": signature,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+};
+
+export const completeBookingCancellationAtTheatre = async (
+  bookingReference: string
+) => {
+  const method = "POST";
+  const url = `/bookings/${bookingReference}/complete-cancel`;
   const body = {};
   const { timestamp, signature } = makeSignature(method, url, body);
 

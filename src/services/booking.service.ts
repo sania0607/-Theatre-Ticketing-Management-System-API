@@ -334,6 +334,31 @@ export const confirmBooking = async (
   });
 };
 
+export const setBookingCheckoutSession = async (
+  bookingReference: string,
+  checkoutSessionId: string
+) => {
+  const booking = await Booking.findOne({
+    where: {
+      booking_reference: bookingReference,
+    },
+  });
+
+  if (!booking) {
+    throw new Error("Booking not found");
+  }
+
+  if (booking.booking_status !== "PENDING") {
+    throw new Error("Booking is not pending");
+  }
+
+  await booking.update({
+    stripe_checkout_session_id: checkoutSessionId,
+  });
+
+  return booking;
+};
+
 export const cancelBooking = async (bookingReference: string) => {
   return sequelize.transaction(async (transaction) => {
     const booking = await Booking.findOne({
@@ -352,8 +377,47 @@ export const cancelBooking = async (bookingReference: string) => {
       return booking;
     }
 
+    if (booking.booking_status === "CANCELLATION_PENDING") {
+      return booking;
+    }
+
     if (!["PENDING", "CONFIRMED"].includes(booking.booking_status || "")) {
       throw new Error("Booking cannot be cancelled");
+    }
+
+    await booking.update(
+      {
+        booking_status: "CANCELLATION_PENDING",
+      },
+      { transaction }
+    );
+
+    return booking;
+  });
+};
+
+export const completeBookingCancellation = async (
+  bookingReference: string
+) => {
+  return sequelize.transaction(async (transaction) => {
+    const booking = await Booking.findOne({
+      where: {
+        booking_reference: bookingReference,
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    if (booking.booking_status === "CANCELLED") {
+      return booking;
+    }
+
+    if (booking.booking_status !== "CANCELLATION_PENDING") {
+      throw new Error("Booking cancellation has not been prepared");
     }
 
     const bookingSeats = await BookingSeat.findAll({
@@ -363,20 +427,93 @@ export const cancelBooking = async (bookingReference: string) => {
       transaction,
     });
 
-    await ShowSeat.update(
-      {
-        status: "AVAILABLE",
-        locked_until: null,
+    const showSeatIds = bookingSeats.map(
+      (bookingSeat) => bookingSeat.show_seat_id
+    );
+    const showSeats = await ShowSeat.findAll({
+      where: {
+        id: {
+          [Op.in]: showSeatIds,
+        },
       },
-      {
-        where: {
-          id: {
-            [Op.in]: bookingSeats.map((bookingSeat) => bookingSeat.show_seat_id),
+      order: [["id", "ASC"]],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    const showSeatsById = new Map(
+      showSeats.map((showSeat) => [showSeat.id, showSeat])
+    );
+    const otherActiveBookings = await BookingSeat.findAll({
+      where: {
+        show_seat_id: {
+          [Op.in]: showSeatIds,
+        },
+        booking_id: {
+          [Op.ne]: booking.id,
+        },
+      },
+      include: [
+        {
+          model: Booking,
+          as: "booking",
+          attributes: ["id", "booking_status"],
+          where: {
+            booking_status: {
+              [Op.in]: ["PENDING", "CONFIRMED", "CANCELLATION_PENDING"],
+            },
           },
         },
-        transaction,
+      ],
+      transaction,
+    });
+    const protectedSeatIds = new Set<number>();
+    const currentTime = new Date();
+
+    for (const otherBookingSeat of otherActiveBookings) {
+      const relatedBooking = (otherBookingSeat as BookingSeat & {
+        booking?: Booking;
+      }).booking;
+      const showSeat = showSeatsById.get(otherBookingSeat.show_seat_id);
+
+      if (
+        !relatedBooking ||
+        !showSeat ||
+        (relatedBooking.booking_status === "CONFIRMED" &&
+          showSeat.status === "BOOKED") ||
+        (relatedBooking.booking_status === "PENDING" &&
+          showSeat.status === "LOCKED" &&
+          showSeat.locked_until &&
+          new Date(showSeat.locked_until) > currentTime) ||
+        (relatedBooking.booking_status === "CANCELLATION_PENDING" &&
+          ((showSeat.status === "BOOKED") ||
+            (showSeat.status === "LOCKED" &&
+              showSeat.locked_until &&
+              new Date(showSeat.locked_until) > currentTime)))
+      ) {
+        protectedSeatIds.add(otherBookingSeat.show_seat_id);
       }
+    }
+
+    const releasableSeatIds = showSeatIds.filter(
+      (showSeatId) => !protectedSeatIds.has(showSeatId)
     );
+
+    if (releasableSeatIds.length > 0) {
+      await ShowSeat.update(
+        {
+          status: "AVAILABLE",
+          locked_until: null,
+        },
+        {
+          where: {
+            id: {
+              [Op.in]: releasableSeatIds,
+            },
+          },
+          transaction,
+        }
+      );
+    }
 
     await booking.update(
       {

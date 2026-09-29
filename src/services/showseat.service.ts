@@ -2,6 +2,7 @@ import { sequelize } from "../config/sequelize";
 import { Op } from "sequelize";
 
 import ShowSeat from "../models/showseat.model";
+import Show from "../models/show.model";
 import Booking from "../models/booking.model";
 import BookingSeat from "../models/bookingseat.model";
 
@@ -120,13 +121,11 @@ export const deleteShowSeat = async (id: number) => {
 
 export const lockShowSeat = async (
   showSeatId: number,
-  aggregatorName: string,
-  totalAmount: number
+  aggregatorName: string
 ) => {
   const result = await lockShowSeats(
     [showSeatId],
-    aggregatorName,
-    totalAmount
+    aggregatorName
   );
 
   return {
@@ -137,13 +136,15 @@ export const lockShowSeat = async (
 
 export const lockShowSeats = async (
   showSeatIds: number[],
-  aggregatorName: string,
-  totalAmount: number
+  aggregatorName: string
 ) => {
   return await sequelize.transaction(async (transaction) => {
     const showSeats = [];
+    const orderedShowSeatIds = [...new Set(showSeatIds)].sort(
+      (firstId, secondId) => firstId - secondId
+    );
 
-    for (const showSeatId of [...new Set(showSeatIds)]) {
+    for (const showSeatId of orderedShowSeatIds) {
       const showSeat = await ShowSeat.findByPk(showSeatId, {
         transaction,
         lock: transaction.LOCK.UPDATE,
@@ -151,6 +152,10 @@ export const lockShowSeats = async (
 
       if (!showSeat) {
         throw new Error("Show seat not found");
+      }
+
+      if (showSeats.length > 0 && showSeat.show_id !== showSeats[0].show_id) {
+        throw new Error("Seats must belong to the same show");
       }
 
       if (showSeat.status === "BOOKED") {
@@ -182,6 +187,15 @@ export const lockShowSeats = async (
       throw new Error("At least one seat is required");
     }
 
+    const show = await Show.findByPk(showSeats[0].show_id, { transaction });
+    const ticketPrice = Number(show?.ticket_price);
+
+    if (!show || !Number.isFinite(ticketPrice) || ticketPrice <= 0) {
+      throw new Error("Show ticket price must be greater than zero");
+    }
+
+    const totalAmount = Math.round(ticketPrice * 100 * showSeats.length) / 100;
+
     const booking = await Booking.create(
       {
         show_id: showSeats[0].show_id,
@@ -207,6 +221,7 @@ export const lockShowSeats = async (
     return {
       booking,
       showSeats,
+      totalAmount,
     };
   });
 };

@@ -132,7 +132,6 @@ async lockShowSeat(req: Request, res: Response) {
   try {
     const {
       aggregatorName,
-      totalAmount,
       showSeatIds,
     } = req.body;
 
@@ -140,22 +139,22 @@ const requestedSeatIds = Array.isArray(showSeatIds)
   ? showSeatIds.map(Number)
   : [Number(req.params.id)];
 
-if (!aggregatorName || totalAmount === undefined || requestedSeatIds.some((id) => !id)) {
+if (!aggregatorName || requestedSeatIds.length === 0 || requestedSeatIds.some((id) => !Number.isInteger(id) || id <= 0)) {
   return res.status(400).json({
-    message: "aggregatorName, totalAmount, and valid seats are required"
+    message: "aggregatorName and valid seats are required"
   });
 }
 
 const result = await showSeatService.lockShowSeats(
   requestedSeatIds,
-  aggregatorName,
-  Number(totalAmount)
+  aggregatorName
 );
 
 res.json({
   message: "Show seat locked successfully",
   bookingReference: result.booking.booking_reference,
   bookingStatus: result.booking.booking_status,
+  totalAmount: result.totalAmount,
   lockedUntil: result.showSeats[0].locked_until,
   showSeats: result.showSeats,
 });
