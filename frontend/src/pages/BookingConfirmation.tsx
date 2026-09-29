@@ -14,24 +14,55 @@ function BookingConfirmation() {
   const [cancelError, setCancelError] = useState("");
 
   useEffect(() => {
+    if (!bookingReference || !window.location.hash) return;
+
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    const cancellationToken = fragment.get("cancellationToken");
+
+    if (cancellationToken) {
+      sessionStorage.setItem(
+        `booking-cancellation:${bookingReference}`,
+        cancellationToken
+      );
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`
+      );
+    }
+  }, [bookingReference]);
+
+  useEffect(() => {
     if (!bookingReference || paymentStatus === "cancelled") return;
 
     let attempts = 0;
     const checkStatus = async () => {
       try {
         const booking = await getBookingStatus(bookingReference);
-        setBookingStatus(booking.booking_status || "PENDING");
+        const status = booking.booking_status || "PENDING";
+        setBookingStatus(status);
+        return status;
       } catch (error) {
         console.error(error);
+        return null;
       }
     };
 
-    checkStatus();
-    const interval = window.setInterval(() => {
+    let interval = 0;
+    const poll = async () => {
+      const status = await checkStatus();
+
+      if (status === "CONFIRMED" || status === "CANCELLED") {
+        window.clearInterval(interval);
+        return;
+      }
+
       attempts += 1;
-      checkStatus();
-      if (attempts >= 10) window.clearInterval(interval);
-    }, 2000);
+      if (attempts >= 30) window.clearInterval(interval);
+    };
+
+    void poll();
+    interval = window.setInterval(() => void poll(), 2000);
 
     return () => window.clearInterval(interval);
   }, [bookingReference, paymentStatus]);
@@ -44,8 +75,10 @@ function BookingConfirmation() {
     try {
       await cancelBooking(bookingReference);
       setBookingStatus("CANCELLED");
-    } catch (error: any) {
-      setCancelError(error.message || "Failed to cancel booking");
+    } catch (error: unknown) {
+      setCancelError(
+        error instanceof Error ? error.message : "Failed to cancel booking"
+      );
     } finally {
       setCancelling(false);
     }
@@ -91,7 +124,7 @@ function BookingConfirmation() {
               {paymentStatus === "success" ? "✓" : "..."}
             </div>
 
-            <h1>{bookingStatus === "CONFIRMED" ? "Booking Confirmed" : bookingStatus === "CANCELLED" ? "Booking Cancelled" : "Payment Received"}</h1>
+            <h1>{bookingStatus === "CONFIRMED" ? "Booking Confirmed" : bookingStatus === "CANCELLED" ? "Booking Cancelled" : bookingStatus === "CANCELLATION_PENDING" ? "Cancellation Processing" : "Payment Received"}</h1>
 
             <div className="booking-card">
               <p>
@@ -105,12 +138,14 @@ function BookingConfirmation() {
                   ? "Your payment is complete and your seat is confirmed."
                   : bookingStatus === "CANCELLED"
                   ? "Your booking was cancelled and the payment was refunded."
+                  : bookingStatus === "CANCELLATION_PENDING"
+                  ? "Your cancellation is being completed. You can retry if it does not finish."
                   : "Stripe has received your payment. Checking booking confirmation..."}
               </p>
 
-              {bookingStatus === "CONFIRMED" && (
+              {(bookingStatus === "CONFIRMED" || bookingStatus === "CANCELLATION_PENDING") && bookingReference && sessionStorage.getItem(`booking-cancellation:${bookingReference}`) && (
                 <button className="book-btn" onClick={handleCancelBooking} disabled={cancelling}>
-                  {cancelling ? "Cancelling..." : "Cancel Booking"}
+                  {cancelling ? "Cancelling..." : bookingStatus === "CANCELLATION_PENDING" ? "Retry Cancellation" : "Cancel Booking"}
                 </button>
               )}
 

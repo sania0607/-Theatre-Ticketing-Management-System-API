@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getShowSeats } from "../services/api";
-import type { ShowSeat } from "../services/api";
+import { getShowSeats, getShows } from "../services/api";
+import type { Show, ShowSeat } from "../services/api";
 
 import "../App.css";
 
@@ -11,7 +11,9 @@ function Seats() {
   const navigate = useNavigate();
 
   const [seats, setSeats] = useState<ShowSeat[]>([]);
+  const [show, setShow] = useState<Show | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<ShowSeat[]>([]);
+  const [customerEmail, setCustomerEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [locking, setLocking] = useState(false);
   const [error, setError] = useState("");
@@ -19,8 +21,17 @@ function Seats() {
   useEffect(() => {
     if (!showId) return;
 
-    getShowSeats(Number(showId))
-      .then((data) => {
+    Promise.all([getShowSeats(Number(showId)), getShows()])
+      .then(([data, shows]) => {
+        const selectedShow = shows.find(
+          (item) => item.id === Number(showId)
+        );
+
+        if (!selectedShow || !Number.isFinite(Number(selectedShow.ticket_price)) || Number(selectedShow.ticket_price) <= 0) {
+          throw new Error("This show is no longer available for booking.");
+        }
+
+        setShow(selectedShow);
         setSeats(
           data.filter(
             (seat) => seat.show_id === Number(showId)
@@ -29,7 +40,7 @@ function Seats() {
       })
       .catch((error) => {
         console.error(error);
-        setError("Failed to load seats.");
+        setError(error.message || "Failed to load seats.");
       })
       .finally(() => {
         setLoading(false);
@@ -52,6 +63,11 @@ function Seats() {
   const handleLockSeat = async () => {
     if (selectedSeats.length === 0) return;
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim())) {
+      setError("Enter a valid email address for your booking receipt.");
+      return;
+    }
+
     setLocking(true);
     setError("");
 
@@ -65,8 +81,8 @@ function Seats() {
           },
           body: JSON.stringify({
             aggregatorName: "MovieBox",
-            totalAmount: selectedSeats.length * 350,
             showSeatIds: selectedSeats.map((seat) => seat.id),
+            customerEmail: customerEmail.trim(),
           }),
         }
       );
@@ -83,12 +99,21 @@ function Seats() {
         throw new Error("Payment checkout is unavailable");
       }
 
+      if (!data.cancellationToken) {
+        throw new Error("Booking cancellation token was not returned");
+      }
+
+      sessionStorage.setItem(
+        `booking-cancellation:${data.bookingReference}`,
+        data.cancellationToken
+      );
+
       window.location.assign(data.checkoutUrl);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       setError(
-        error.message || "Failed to lock seat."
+        error instanceof Error ? error.message : "Failed to lock seat."
       );
     } finally {
       setLocking(false);
@@ -264,6 +289,18 @@ function Seats() {
 
               <div className="booking-summary">
 
+                <label className="booking-email-field">
+                  Receipt email
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={customerEmail}
+                    onChange={(event) => setCustomerEmail(event.target.value)}
+                    required
+                  />
+                </label>
+
                 <div>
                   <p>Selected Seat</p>
 
@@ -276,14 +313,14 @@ function Seats() {
                   <p>Price</p>
 
                   <h3>
-                    ₹{selectedSeats.length * 350}
+                    ₹{selectedSeats.length * Number(show?.ticket_price ?? 0)}
                   </h3>
                 </div>
 
                 <button
                   className="book-btn"
                   onClick={handleLockSeat}
-                  disabled={locking}
+                  disabled={locking || !show || !customerEmail.trim()}
                 >
                   {locking
                     ? "Locking..."
