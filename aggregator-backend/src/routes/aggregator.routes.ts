@@ -133,6 +133,17 @@ router.post("/show-seats/:id/lock", async (req, res) => {
 
 router.get("/bookings/:bookingReference/status", async (req, res) => {
   try {
+    if (
+      !isValidBookingCancellationToken(
+        req.params.bookingReference,
+        req.header("x-booking-cancellation-token")
+      )
+    ) {
+      return res.status(401).json({
+        message: "Valid booking token required",
+      });
+    }
+
     try {
       await reconcilePaidBookingPayment(req.params.bookingReference);
     } catch (reconciliationError) {

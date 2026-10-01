@@ -90,8 +90,21 @@ export const confirmBooking = async (
 };
 
 export const getBookingStatus = async (bookingReference: string) => {
+  const token = sessionStorage.getItem(
+    `booking-cancellation:${bookingReference}`
+  );
+
+  if (!token) {
+    throw new Error("Booking access token is unavailable");
+  }
+
   const response = await fetch(
-    `${API_BASE_URL}/aggregator/bookings/${bookingReference}/status`
+    `${API_BASE_URL}/aggregator/bookings/${bookingReference}/status`,
+    {
+      headers: {
+        "x-booking-cancellation-token": token,
+      },
+    }
   );
 
   if (!response.ok) {
