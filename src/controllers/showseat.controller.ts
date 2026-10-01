@@ -24,18 +24,10 @@ async createShowSeat(req: Request, res: Response) {
 
 @Authenticate()
 @Authorize("read:showseats")
-async getAllShowSeats(req: Request, res: Response) {
+async getAllShowSeats(_req: Request, res: Response) {
   try {
-    const showId = Number(req.query.show_id);
-
-    if (!showId) {
-      return res.status(400).json({
-        message: "show_id is required",
-      });
-    }
-
     const showSeats =
-      await showSeatService.getShowSeatsByShowId(showId);
+      await showSeatService.getAllShowSeats();
 
     res.json(showSeats);
   } catch (error) {
@@ -45,7 +37,8 @@ async getAllShowSeats(req: Request, res: Response) {
       message: "Failed to fetch show seats",
     });
   }
-};
+}
+
 
 @Authenticate()
 @Authorize("read:showseats")
@@ -182,8 +175,7 @@ res.json({
 
     res.status(500).json({
       message: "Failed to lock show seat",
-      });
-    }
+    });
   }
 
   @Authenticate()

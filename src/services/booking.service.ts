@@ -5,30 +5,6 @@ import BookingSeat from "../models/bookingseat.model";
 import ShowSeat from "../models/showseat.model";
 import Seat from "../models/seat.model";
 
-// CREATE BOOKING
-
-export const createBooking = async (booking: any) => {
-  const {
-    show_id,
-    aggregator_name,
-    booking_reference,
-    booking_status,
-    total_amount,
-    booked_at,
-  } = booking;
-
-  const newBooking = await Booking.create({
-    show_id,
-    aggregator_name,
-    booking_reference,
-    booking_status,
-    total_amount,
-    booked_at,
-  });
-
-  return newBooking;
-};
-
 // GET ALL BOOKINGS
 
 export const getAllBookings = async () => {
@@ -113,52 +89,125 @@ export const deleteBooking = async (id: number) => {
 };
 
 
-// CREATE BOOKING WITH SEAT
-// Creates a PENDING booking for an already LOCKED seat.
-// The seat remains LOCKED until confirmation.
+// CREATE BOOKING WITH MULTIPLE SEATS
+// Locks all selected seats and creates one PENDING booking
+// in ONE transaction.
 
-export const createBookingWithSeat = async (
+export const createBookingWithSeats = async (
   booking: any,
-  showSeatId: number
+  showSeatIds: number[]
 ) => {
   return await sequelize.transaction(async (transaction) => {
-    // 1. Find and lock the ShowSeat row
 
-    const showSeat = await ShowSeat.findByPk(showSeatId, {
+    // 1. Validate seat IDs
+
+    if (!showSeatIds || showSeatIds.length === 0) {
+      throw new Error("At least one show seat is required");
+    }
+
+    if (!booking.show_id) {
+      throw new Error("Show ID is required");
+    }
+
+    // Remove duplicate seat IDs
+
+    const uniqueShowSeatIds = [
+      ...new Set(showSeatIds),
+    ];
+
+    // 2. Find and lock all requested ShowSeat rows
+
+    const showSeats = await ShowSeat.findAll({
+      where: {
+        id: {
+          [Op.in]: uniqueShowSeatIds,
+        },
+        show_id: booking.show_id,
+      },
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
 
-    if (!showSeat) {
-      throw new Error("Show seat not found");
-    }
-
-    // 2. Seat must be LOCKED
-
-    if (showSeat.status !== "LOCKED") {
-      if (showSeat.status === "BOOKED") {
-        throw new Error("Seat is already booked");
-      }
-
-      throw new Error("Seat is not locked");
-    }
-
-    // 3. Check whether the lock has expired
+    // 3. Make sure all requested seats exist
 
     if (
-      !showSeat.locked_until ||
-      new Date(showSeat.locked_until) <= new Date()
+      showSeats.length !==
+      uniqueShowSeatIds.length
     ) {
-      throw new Error("Seat lock has expired");
+      throw new Error(
+        "One or more show seats not found"
+      );
     }
 
-    // 4. Create PENDING booking
+    // 4. Check every seat
+
+    for (const showSeat of showSeats) {
+
+      // Already booked
+
+      if (showSeat.status === "BOOKED") {
+        throw new Error(
+          "One or more seats are already booked"
+        );
+      }
+
+      // If currently locked, check whether lock expired
+
+      if (showSeat.status === "LOCKED") {
+
+        if (
+          showSeat.locked_until &&
+          new Date(showSeat.locked_until) > new Date()
+        ) {
+          throw new Error(
+            "One or more seats are already locked"
+          );
+        }
+
+        // Previous lock expired
+        // We can lock it again
+      }
+    }
+
+    // 5. Create lock time
+
+    const lockDuration = 5 * 60 * 1000;
+
+    const lockedUntil = new Date(
+      Date.now() + lockDuration
+    );
+
+    // 6. Lock ALL selected seats
+
+    await ShowSeat.update(
+      {
+        status: "LOCKED",
+        locked_until: lockedUntil,
+      },
+      {
+        where: {
+          id: {
+            [Op.in]: uniqueShowSeatIds,
+          },
+        },
+        transaction,
+      }
+    );
+
+    // 7. Generate ONE booking reference
+
+    const bookingReference =
+      `BK-${Date.now()}-${Math.floor(
+        Math.random() * 10000
+      )}`;
+
+    // 8. Create ONE PENDING booking
 
     const newBooking = await Booking.create(
       {
         show_id: booking.show_id,
         aggregator_name: booking.aggregator_name,
-        booking_reference: booking.booking_reference,
+        booking_reference: bookingReference,
         booking_status: "PENDING",
         total_amount: booking.total_amount,
         booked_at: booking.booked_at || new Date(),
@@ -168,20 +217,22 @@ export const createBookingWithSeat = async (
       }
     );
 
-    // 5. Connect booking with ShowSeat
+    // 9. Create BookingSeat row for every seat
 
-    await BookingSeat.create(
-      {
-        booking_id: newBooking.id,
-        show_seat_id: showSeatId,
-      },
-      {
-        transaction,
-      }
-    );
+    for (const showSeatId of uniqueShowSeatIds) {
 
-    // Seat stays LOCKED.
-    // It becomes BOOKED only after confirmation.
+      await BookingSeat.create(
+        {
+          booking_id: newBooking.id,
+          show_seat_id: showSeatId,
+        },
+        {
+          transaction,
+        }
+      );
+    }
+
+    // 10. Return booking
 
     return newBooking;
   });
@@ -189,143 +240,125 @@ export const createBookingWithSeat = async (
 
 
 // CONFIRM BOOKING
-// PENDING booking → CONFIRMED
+// PENDING → CONFIRMED
 // LOCKED seats → BOOKED
 
 export const confirmBooking = async (
   bookingReference: string
 ) => {
-  return await sequelize.transaction(async (transaction) => {
-    // 1. Find and lock the booking
 
-    const booking = await Booking.findOne({
-      where: {
-        booking_reference: bookingReference,
-      },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-    });
+  return await sequelize.transaction(
+    async (transaction) => {
 
-    if (!booking) {
-      throw new Error("Booking not found");
-    }
+      // 1. Find and lock booking
 
-    // 2. Booking must be PENDING
-
-    if (booking.booking_status !== "PENDING") {
-      throw new Error("Booking is not pending");
-    }
-
-    // 3. Find seats connected to this booking
-
-    const bookingSeats = await BookingSeat.findAll({
-      where: {
-        booking_id: booking.id,
-      },
-      transaction,
-    });
-
-    if (bookingSeats.length === 0) {
-      throw new Error("Show seat not found");
-    }
-
-    // 4. Extract ShowSeat IDs
-
-    const showSeatIds = bookingSeats.map(
-      (bookingSeat) => bookingSeat.show_seat_id
-    );
-
-    // 5. Find and lock all ShowSeat rows
-
-    const showSeats = await ShowSeat.findAll({
-      where: {
-        id: {
-          [Op.in]: showSeatIds,
+      const booking = await Booking.findOne({
+        where: {
+          booking_reference: bookingReference,
         },
-      },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-    });
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
 
-    if (showSeats.length !== bookingSeats.length) {
-      throw new Error("Show seat not found");
-    }
-
-    // 6. Validate every seat
-
-    for (const showSeat of showSeats) {
-      // Seat must still be LOCKED
-
-      if (showSeat.status !== "LOCKED") {
-        if (showSeat.status === "BOOKED") {
-          throw new Error("Seat is already booked");
-        }
-
-        throw new Error("Seat is not locked");
+      if (!booking) {
+        throw new Error("Booking not found");
       }
 
-      // Lock must not have expired
+      // 2. Booking must be PENDING
 
       if (
-        !showSeat.locked_until ||
-        new Date(showSeat.locked_until) <= new Date()
+        booking.booking_status !== "PENDING"
       ) {
-        throw new Error("Seat lock has expired");
+        throw new Error(
+          "Booking is not pending"
+        );
       }
-    }
 
-    // 7. Confirm the booking
+      // 3. Get all BookingSeat rows
 
-    await booking.update(
-      {
-        booking_status: "CONFIRMED",
-      },
-      {
-        transaction,
-      }
-    );
-
-    // 8. Mark all seats as BOOKED
-
-    await ShowSeat.update(
-      {
-        status: "BOOKED",
-        locked_until: null,
-      },
-      {
-        where: {
-          id: {
-            [Op.in]: showSeatIds,
+      const bookingSeats =
+        await BookingSeat.findAll({
+          where: {
+            booking_id: booking.id,
           },
-        },
-        transaction,
+          transaction,
+        });
+
+      if (bookingSeats.length === 0) {
+        throw new Error(
+          "Show seat not found"
+        );
       }
-    );
 
-    // 9. Reload booking
+      // 4. Get ShowSeat IDs
 
-    await booking.reload({
-      transaction,
-    });
+      const showSeatIds =
+        bookingSeats.map(
+          (bookingSeat) =>
+            bookingSeat.show_seat_id
+        );
 
-    // 10. Get updated seats
+      // 5. Lock all ShowSeat rows
 
-    const updatedShowSeats = await ShowSeat.findAll({
-      where: {
-        id: {
-          [Op.in]: showSeatIds,
+      const showSeats =
+        await ShowSeat.findAll({
+          where: {
+            id: {
+              [Op.in]: showSeatIds,
+            },
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+      if (
+        showSeats.length !==
+        bookingSeats.length
+      ) {
+        throw new Error(
+          "One or more show seats not found"
+        );
+      }
+
+      // 6. Validate seats
+
+      for (const showSeat of showSeats) {
+
+        if (showSeat.status === "BOOKED") {
+          throw new Error(
+            "One or more seats are already booked"
+          );
+        }
+
+        if (showSeat.status !== "LOCKED") {
+          throw new Error(
+            "One or more seats are not locked"
+          );
+        }
+
+        if (
+          !showSeat.locked_until ||
+          new Date(showSeat.locked_until) <=
+            new Date()
+        ) {
+          throw new Error(
+            "One or more seat locks have expired"
+          );
+        }
+      }
+
+      // 7. Confirm booking
+
+      await booking.update(
+        {
+          booking_status: "CONFIRMED",
         },
-      },
-      include: [
-    {
-      model: Seat,
-      as: "seat",
-    },
-  ],
-  transaction,
-});
+        {
+          transaction,
+        }
+      );
 
-    // 11. Return result
+      // 8. Mark all seats as BOOKED
 
     return {
       booking,

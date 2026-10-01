@@ -117,7 +117,7 @@ export const deleteShowSeat = async (id: number) => {
   return showSeat;
 };
 
-// LOCK SHOW SEAT + CREATE PENDING BOOKING
+// LOCK SHOW SEAT 
 
 export const lockShowSeat = async (
   showSeatId: number,
