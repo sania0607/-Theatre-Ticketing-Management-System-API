@@ -360,10 +360,22 @@ export const confirmBooking = async (
 
       // 8. Mark all seats as BOOKED
 
-    return {
-      booking,
-      showSeats: updatedShowSeats,
-    };
+      const updatedShowSeats = await Promise.all(
+        showSeats.map((showSeat) =>
+          showSeat.update(
+            {
+              status: "BOOKED",
+              locked_until: null,
+            },
+            { transaction }
+          )
+        )
+      );
+
+      return {
+        booking,
+        showSeats: updatedShowSeats,
+      };
   });
 };
 

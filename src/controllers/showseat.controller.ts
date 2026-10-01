@@ -177,6 +177,7 @@ res.json({
       message: "Failed to lock show seat",
     });
   }
+};
 
   @Authenticate()
   @Authorize("create:booking")
